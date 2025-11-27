@@ -25,20 +25,20 @@
 npm install
 ```
 
-### 2. 配置文件
+### 2. 配置环境变量
 
-编辑 `config.json` 配置服务器和 API 参数：
+复制 `.env.example` 为 `.env` 并编辑配置：
 
-```json
-{
-  "server": {
-    "port": 8045,
-    "host": "0.0.0.0"
-  },
-  "security": {
-    "apiKey": "sk-text"
-  }
-}
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 文件配置服务器和 API 参数：
+
+```env
+PORT=8045
+HOST=0.0.0.0
+API_KEY=sk-text
 ```
 
 ### 3. 登录获取 Token
@@ -178,19 +178,24 @@ curl http://localhost:8045/v1/chat/completions \
 
 ## 配置说明
 
-### config.json
+### 环境变量 (.env)
 
-| 配置项 | 说明 | 默认值 |
+| 环境变量 | 说明 | 默认值 |
 |--------|------|--------|
-| `server.port` | 服务端口 | 8045 |
-| `server.host` | 监听地址 | 0.0.0.0 |
-| `security.apiKey` | API 认证密钥 | sk-text |
-| `security.maxRequestSize` | 最大请求体大小 | 50mb |
-| `defaults.temperature` | 默认温度参数 | 1 |
-| `defaults.top_p` | 默认 top_p | 0.85 |
-| `defaults.top_k` | 默认 top_k | 50 |
-| `defaults.max_tokens` | 默认最大 token 数 | 8096 |
-| `systemInstruction` | 系统提示词 | - |
+| `PORT` | 服务端口 | 8045 |
+| `HOST` | 监听地址 | 127.0.0.1 |
+| `API_KEY` | API 认证密钥 | - |
+| `MAX_REQUEST_SIZE` | 最大请求体大小 | 50mb |
+| `DEFAULT_TEMPERATURE` | 默认温度参数 | 1 |
+| `DEFAULT_TOP_P` | 默认 top_p | 0.85 |
+| `DEFAULT_TOP_K` | 默认 top_k | 50 |
+| `DEFAULT_MAX_TOKENS` | 默认最大 token 数 | 8096 |
+| `USE_NATIVE_FETCH` | 使用原生 axios | false |
+| `TIMEOUT` | 请求超时时间（毫秒） | 30000 |
+| `PROXY` | 代理地址 | - |
+| `SYSTEM_INSTRUCTION` | 系统提示词 | - |
+
+完整配置示例请参考 `.env.example` 文件。
 
 ## 开发命令
 
@@ -212,28 +217,39 @@ npm run login
 ├── data/
 │   └── accounts.json       # Token 存储（自动生成）
 ├── scripts/
-│   └── oauth-server.js     # OAuth 登录服务
+│   ├── oauth-server.js     # OAuth 登录服务
+│   └── refresh-tokens.js   # Token 刷新脚本
 ├── src/
 │   ├── api/
 │   │   └── client.js       # API 调用逻辑
 │   ├── auth/
 │   │   └── token_manager.js # Token 管理
+│   ├── bin/
+│   │   ├── antigravity_requester_android_arm64   # Android ARM64 TLS 请求器
+│   │   ├── antigravity_requester_linux_amd64     # Linux AMD64 TLS 请求器
+│   │   └── antigravity_requester_windows_amd64.exe # Windows AMD64 TLS 请求器
 │   ├── config/
 │   │   └── config.js       # 配置加载
 │   ├── server/
 │   │   └── index.js        # 主服务器
-│   └── utils/
-│       ├── logger.js       # 日志模块
-│       └── utils.js        # 工具函数
-├── config.json             # 配置文件
+│   ├── utils/
+│   │   ├── idGenerator.js  # ID 生成器
+│   │   ├── logger.js       # 日志模块
+│   │   └── utils.js        # 工具函数
+│   └── AntigravityRequester.js # TLS 指纹请求器封装
+├── test/
+│   ├── test-request.js     # 请求测试
+│   └── test-transform.js   # 转换测试
+├── .env                    # 环境变量配置
+├── .env.example            # 环境变量配置示例
 └── package.json            # 项目配置
 ```
 
 ## 注意事项
 
-1. 首次使用需要运行 `npm run login` 获取 Token
-2. `data/accounts.json` 包含敏感信息，请勿泄露
-3. API Key 可在 `config.json` 中自定义
+1. 首次使用需要复制 `.env.example` 为 `.env` 并配置
+2. 运行 `npm run login` 获取 Token
+3. `.env` 和 `data/accounts.json` 包含敏感信息，请勿泄露
 4. 支持多账号轮换，提高可用性
 5. Token 会自动刷新，无需手动维护
 

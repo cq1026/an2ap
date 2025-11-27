@@ -57,7 +57,7 @@ app.post('/v1/chat/completions', async (req, res) => {
     }
     
     const requestBody = await generateRequestBody(messages, model, params, tools);
-    //console.log(JSON.stringify(requestBody,null,2));
+    // console.log(JSON.stringify(requestBody,null,2));
     
     if (stream) {
       res.setHeader('Content-Type', 'text/event-stream');

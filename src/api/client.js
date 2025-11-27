@@ -1,23 +1,101 @@
+import axios from 'axios';
 import tokenManager from '../auth/token_manager.js';
 import config from '../config/config.js';
 import { generateToolCallId } from '../utils/idGenerator.js';
 import AntigravityRequester from '../AntigravityRequester.js';
 
+// 请求客户端：优先使用 AntigravityRequester，失败则降级到 axios
 let requester = null;
-let useNativeFetch = false;
+let useAxios = false;
 
-if (config.useNativeFetch !== true) {
+if (config.useNativeAxios === true) {
+  useAxios = true;
+} else {
   try {
     requester = new AntigravityRequester();
   } catch (error) {
-    console.warn('AntigravityRequester initialization failed, falling back to native fetch:', error.message);
-    useNativeFetch = true;
+    console.warn('AntigravityRequester 初始化失败，降级使用 axios:', error.message);
+    useAxios = true;
   }
-} else {
-  useNativeFetch = true;
 }
 
-function processStreamLine(line, state, callback) {
+// ==================== 辅助函数 ====================
+
+function buildHeaders(token) {
+  return {
+    'Host': config.api.host,
+    'User-Agent': config.api.userAgent,
+    'Authorization': `Bearer ${token.access_token}`,
+    'Content-Type': 'application/json',
+    'Accept-Encoding': 'gzip'
+  };
+}
+
+function buildAxiosConfig(url, headers, body = null) {
+  const axiosConfig = {
+    method: 'POST',
+    url,
+    headers,
+    timeout: config.timeout,
+    proxy: config.proxy ? (() => {
+      const proxyUrl = new URL(config.proxy);
+      return { protocol: proxyUrl.protocol.replace(':', ''), host: proxyUrl.hostname, port: parseInt(proxyUrl.port) };
+    })() : false
+  };
+  if (body !== null) axiosConfig.data = body;
+  return axiosConfig;
+}
+
+function buildRequesterConfig(headers, body = null) {
+  const reqConfig = {
+    method: 'POST',
+    headers,
+    timeout_ms: config.timeout,
+    proxy: config.proxy
+  };
+  if (body !== null) reqConfig.body = JSON.stringify(body);
+  return reqConfig;
+}
+
+// 统一错误处理
+async function handleApiError(error, token) {
+  const status = error.response?.status || error.status;
+  let errorBody = error.message;
+  
+  if (error.response?.data?.readable) {
+    const chunks = [];
+    for await (const chunk of error.response.data) {
+      chunks.push(chunk);
+    }
+    errorBody = Buffer.concat(chunks).toString();
+  } else if (typeof error.response?.data === 'object') {
+    errorBody = JSON.stringify(error.response.data, null, 2);
+  } else if (error.response?.data) {
+    errorBody = error.response.data;
+  }
+  
+  if (status === 403) {
+    tokenManager.disableCurrentToken(token);
+    throw new Error(`该账号没有使用权限，已自动禁用。错误详情: ${errorBody}`);
+  }
+  
+  throw new Error(`API请求失败 (${status}): ${errorBody}`);
+}
+
+// 转换 functionCall 为 OpenAI 格式
+function convertToToolCall(functionCall) {
+  return {
+    id: functionCall.id || generateToolCallId(),
+    type: 'function',
+    function: {
+      name: functionCall.name,
+      arguments: JSON.stringify(functionCall.args)
+    }
+  };
+}
+
+// 解析并发送流式响应片段（会修改 state 并触发 callback）
+function parseAndEmitStreamChunk(line, state, callback) {
   if (!line.startsWith('data: ')) return;
   
   try {
@@ -27,30 +105,27 @@ function processStreamLine(line, state, callback) {
     if (parts) {
       for (const part of parts) {
         if (part.thought === true) {
+          // 思维链内容
           if (!state.thinkingStarted) {
             callback({ type: 'thinking', content: '<think>\n' });
             state.thinkingStarted = true;
           }
           callback({ type: 'thinking', content: part.text || '' });
         } else if (part.text !== undefined) {
+          // 普通文本内容
           if (state.thinkingStarted) {
             callback({ type: 'thinking', content: '\n</think>\n' });
             state.thinkingStarted = false;
           }
           callback({ type: 'text', content: part.text });
         } else if (part.functionCall) {
-          state.toolCalls.push({
-            id: part.functionCall.id || generateToolCallId(),
-            type: 'function',
-            function: {
-              name: part.functionCall.name,
-              arguments: JSON.stringify(part.functionCall.args)
-            }
-          });
+          // 工具调用
+          state.toolCalls.push(convertToToolCall(part.functionCall));
         }
       }
     }
     
+    // 响应结束时发送工具调用
     if (data.response?.candidates?.[0]?.finishReason && state.toolCalls.length > 0) {
       if (state.thinkingStarted) {
         callback({ type: 'thinking', content: '\n</think>\n' });
@@ -60,63 +135,43 @@ function processStreamLine(line, state, callback) {
       state.toolCalls = [];
     }
   } catch (e) {
-    // 忽略解析错误
+    // 忽略 JSON 解析错误
   }
 }
 
+// ==================== 导出函数 ====================
+
 export async function generateAssistantResponse(requestBody, callback) {
   const token = await tokenManager.getToken();
+  if (!token) throw new Error('没有可用的token，请运行 npm run login 获取token');
   
-  if (!token) {
-    throw new Error('没有可用的token，请运行 npm run login 获取token');
-  }
-  
-  const headers = {
-    'Host': config.api.host,
-    'User-Agent': config.api.userAgent,
-    'Authorization': `Bearer ${token.access_token}`,
-    'Content-Type': 'application/json',
-    'Accept-Encoding': 'gzip'
-  };
-  
+  const headers = buildHeaders(token);
   const state = { thinkingStarted: false, toolCalls: [] };
-  let buffer = '';
+  let buffer = ''; // 缓冲区：处理跨 chunk 的不完整行
   
   const processChunk = (chunk) => {
     buffer += chunk;
     const lines = buffer.split('\n');
-    buffer = lines.pop();
-    lines.forEach(line => processStreamLine(line, state, callback));
+    buffer = lines.pop(); // 保留最后一行（可能不完整）
+    lines.forEach(line => parseAndEmitStreamChunk(line, state, callback));
   };
   
-  if (useNativeFetch) {
-    const response = await fetch(config.api.url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
+  if (useAxios) {
+    try {
+      const axiosConfig = { ...buildAxiosConfig(config.api.url, headers, requestBody), responseType: 'stream' };
+      const response = await axios(axiosConfig);
       if (response.status === 403) tokenManager.disableCurrentToken(token);
-      throw new Error(`API请求失败 (${response.status}): ${errorBody}`);
-    }
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      processChunk(decoder.decode(value, { stream: true }));
+      response.data.on('data', chunk => processChunk(chunk.toString()));
+      await new Promise((resolve, reject) => {
+        response.data.on('end', resolve);
+        response.data.on('error', reject);
+      });
+    } catch (error) {
+      await handleApiError(error, token);
     }
   } else {
-    const streamResponse = requester.antigravity_fetchStream(config.api.url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-
+    const streamResponse = requester.antigravity_fetchStream(config.api.url, buildRequesterConfig(headers, requestBody));
     let errorBody = '';
     let statusCode = null;
 
@@ -126,20 +181,8 @@ export async function generateAssistantResponse(requestBody, callback) {
           statusCode = status;
           if (status === 403) tokenManager.disableCurrentToken(token);
         })
-        .onData((chunk) => {
-          if (statusCode !== 200) {
-            errorBody += chunk;
-          } else {
-            processChunk(chunk);
-          }
-        })
-        .onEnd(() => {
-          if (statusCode !== 200) {
-            reject(new Error(`API请求失败 (${statusCode}): ${errorBody}`));
-          } else {
-            resolve();
-          }
-        })
+        .onData((chunk) => statusCode !== 200 ? errorBody += chunk : processChunk(chunk))
+        .onEnd(() => statusCode !== 200 ? reject(new Error(`API请求失败 (${statusCode}): ${errorBody}`)) : resolve())
         .onError(reject);
     });
   }
@@ -147,75 +190,54 @@ export async function generateAssistantResponse(requestBody, callback) {
 
 export async function getAvailableModels() {
   const token = await tokenManager.getToken();
+  if (!token) throw new Error('没有可用的token，请运行 npm run login 获取token');
   
-  if (!token) {
-    throw new Error('没有可用的token，请运行 npm run login 获取token');
+  const headers = buildHeaders(token);
+  
+  try {
+    const data = useAxios
+      ? (await axios(buildAxiosConfig(config.api.modelsUrl, headers, {}))).data
+      : await (await requester.antigravity_fetch(config.api.modelsUrl, buildRequesterConfig(headers, {}))).json();
+    
+    return {
+      object: 'list',
+      data: Object.keys(data.models).map(id => ({
+        id,
+        object: 'model',
+        created: Math.floor(Date.now() / 1000),
+        owned_by: 'google'
+      }))
+    };
+  } catch (error) {
+    await handleApiError(error, token);
   }
-  
-  const headers = {
-    'Host': config.api.host,
-    'User-Agent': config.api.userAgent,
-    'Authorization': `Bearer ${token.access_token}`,
-    'Content-Type': 'application/json',
-    'Accept-Encoding': 'gzip'
-  };
-  
-  const fetchFn = useNativeFetch ? fetch : (url, opts) => requester.antigravity_fetch(url, opts);
-  const response = await fetchFn(config.api.modelsUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({})
-  });
-
-  const data = await response.json();
-  
-  return {
-    object: 'list',
-    data: Object.keys(data.models).map(id => ({
-      id,
-      object: 'model',
-      created: Math.floor(Date.now() / 1000),
-      owned_by: 'google'
-    }))
-  };
 }
-
-
 
 export async function generateAssistantResponseNoStream(requestBody) {
   const token = await tokenManager.getToken();
+  if (!token) throw new Error('没有可用的token，请运行 npm run login 获取token');
   
-  if (!token) {
-    throw new Error('没有可用的token，请运行 npm run login 获取token');
-  }
+  const headers = buildHeaders(token);
+  let data;
   
-  const headers = {
-    'Host': config.api.host,
-    'User-Agent': config.api.userAgent,
-    'Authorization': `Bearer ${token.access_token}`,
-    'Content-Type': 'application/json',
-    'Accept-Encoding': 'gzip'
-  };
-  
-  const fetchFn = useNativeFetch ? fetch : (url, opts) => requester.antigravity_fetch(url, opts);
-  const response = await fetchFn(config.api.noStreamUrl, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody)
-  });
-  if (response.status !== 200) {
-    const errorBody = await response.text();
-    if (response.status === 403) {
-      tokenManager.disableCurrentToken(token);
-      throw new Error(`该账号没有使用权限，已自动禁用。错误详情: ${errorBody}`);
+  try {
+    if (useAxios) {
+      data = (await axios(buildAxiosConfig(config.api.noStreamUrl, headers, requestBody))).data;
+    } else {
+      const response = await requester.antigravity_fetch(config.api.noStreamUrl, buildRequesterConfig(headers, requestBody));
+      if (response.status !== 200) {
+        const errorBody = await response.text();
+        if (response.status === 403) tokenManager.disableCurrentToken(token);
+        throw new Error(response.status === 403 ? `该账号没有使用权限，已自动禁用。错误详情: ${errorBody}` : `API请求失败 (${response.status}): ${errorBody}`);
+      }
+      data = await response.json();
     }
-    throw new Error(`API请求失败 (${response.status}): ${errorBody}`);
+  } catch (error) {
+    await handleApiError(error, token);
   }
-
-  const data = await response.json();
-  //console.log(JSON.stringify(data,null,2))
-  const parts = data.response?.candidates?.[0]?.content?.parts || [];
   
+  // 解析响应内容
+  const parts = data.response?.candidates?.[0]?.content?.parts || [];
   let content = '';
   let thinkingContent = '';
   const toolCalls = [];
@@ -226,17 +248,11 @@ export async function generateAssistantResponseNoStream(requestBody) {
     } else if (part.text !== undefined) {
       content += part.text;
     } else if (part.functionCall) {
-      toolCalls.push({
-        id: part.functionCall.id || generateToolCallId(),
-        type: 'function',
-        function: {
-          name: part.functionCall.name,
-          arguments: JSON.stringify(part.functionCall.args)
-        }
-      });
+      toolCalls.push(convertToToolCall(part.functionCall));
     }
   }
   
+  // 拼接思维链标签
   if (thinkingContent) {
     content = `<think>\n${thinkingContent}\n</think>\n${content}`;
   }
@@ -245,7 +261,5 @@ export async function generateAssistantResponseNoStream(requestBody) {
 }
 
 export function closeRequester() {
-  if (requester) {
-    requester.close();
-  }
+  if (requester) requester.close();
 }

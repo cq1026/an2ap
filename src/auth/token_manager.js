@@ -1,8 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import axios from 'axios';
 import { log } from '../utils/logger.js';
 import { generateProjectId, generateSessionId } from '../utils/idGenerator.js';
+import config from '../config/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,27 +66,31 @@ class TokenManager {
       refresh_token: token.refresh_token
     });
 
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Host': 'oauth2.googleapis.com',
-        'User-Agent': 'Go-http-client/1.1',
-        'Content-Length': body.toString().length.toString(),
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept-Encoding': 'gzip'
-      },
-      body: body.toString()
-    });
+    try {
+      const response = await axios({
+        method: 'POST',
+        url: 'https://oauth2.googleapis.com/token',
+        headers: {
+          'Host': 'oauth2.googleapis.com',
+          'User-Agent': 'Go-http-client/1.1',
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept-Encoding': 'gzip'
+        },
+        data: body.toString(),
+        timeout: config.timeout,
+        proxy: config.proxy ? (() => {
+          const proxyUrl = new URL(config.proxy);
+          return { protocol: proxyUrl.protocol.replace(':', ''), host: proxyUrl.hostname, port: parseInt(proxyUrl.port) };
+        })() : false
+      });
 
-    if (response.ok) {
-      const data = await response.json();
-      token.access_token = data.access_token;
-      token.expires_in = data.expires_in;
+      token.access_token = response.data.access_token;
+      token.expires_in = response.data.expires_in;
       token.timestamp = Date.now();
       this.saveToFile();
       return token;
-    } else {
-      throw { statusCode: response.status, message: await response.text() };
+    } catch (error) {
+      throw { statusCode: error.response?.status, message: error.response?.data || error.message };
     }
   }
 
