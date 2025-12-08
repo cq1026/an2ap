@@ -3,108 +3,331 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Token 管理系统</title>
+    <title>Antigravity Console</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- 登录表单 -->
-        <div id="loginForm" class="login-form">
-            <h2>🔐 Token 管理系统</h2>
-            <form id="login">
-                <div class="form-group">
-                    <label>👤 用户名</label>
-                    <input type="text" id="username" required autocomplete="username">
+    <!-- 登录页面 -->
+    <div id="loginPage" class="login-page">
+        <div class="login-container">
+            <div class="login-card">
+                <div class="login-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
                 </div>
-                <div class="form-group">
-                    <label>🔑 密码</label>
-                    <input type="password" id="password" required autocomplete="current-password">
-                </div>
-                <button type="submit">登录</button>
-            </form>
+                <h1 class="login-title">Antigravity Console</h1>
+                <p class="login-subtitle">管理员登录</p>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" id="username" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="password" required autocomplete="current-password">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-large">登 录</button>
+                </form>
+            </div>
         </div>
 
-        <!-- 主内容 -->
-        <div id="mainContent" class="main-content hidden">
-            <div class="header">
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('tokens')">🎯 Token管理</button>
-                    <button class="tab" onclick="switchTab('settings')">⚙️ 设置</button>
+        <!-- 深色模式切换按钮 -->
+        <button id="darkModeToggleLogin" class="dark-mode-toggle-login">
+            <svg class="icon-light" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
+            <svg class="icon-dark" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- 主应用 -->
+    <div id="mainApp" class="main-app hidden">
+        <!-- 侧边栏 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
                 </div>
-                <button onclick="logout()">🚪 退出</button>
+                <span class="sidebar-title">Antigravity</span>
             </div>
-            <div class="content">
-                <!-- Token管理页面 -->
-                <div id="tokensPage">
-                <!-- 统计卡片 -->
-                <div class="stats">
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalTokens">0</div>
-                        <div class="stat-label">总Token数</div>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, var(--success), #059669);">
-                        <div class="stat-value" id="enabledTokens">0</div>
-                        <div class="stat-label">已启用</div>
-                    </div>
-                    <div class="stat-card" style="background: linear-gradient(135deg, var(--danger), #dc2626);">
-                        <div class="stat-value" id="disabledTokens">0</div>
-                        <div class="stat-label">已禁用</div>
-                    </div>
-                </div>
 
-                <!-- 添加Token按钮组 -->
-                <div class="add-form">
-                    <h3>➕ 添加新Token<span class="help-tip" title="支持OAuth登录或手动填入Token">?</span></h3>
-                    <div class="btn-group">
-                        <button type="button" onclick="showOAuthModal()" class="btn btn-success">🔐 OAuth登录</button>
-                        <button type="button" onclick="showManualModal()" class="btn btn-secondary">✏️ 手动填入</button>
-                        <button type="button" onclick="loadTokens()" class="btn btn-warning">🔄 刷新</button>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-page="tokens">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/>
+                        <rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+                    </svg>
+                    <span>Token 管理</span>
+                </button>
+                <button class="nav-item" data-page="settings">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span>系统设置</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="darkModeToggle" class="sidebar-btn">
+                    <svg class="icon-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    </svg>
+                    <svg class="icon-dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                    </svg>
+                    <span class="text-light">切换亮色模式</span>
+                    <span class="text-dark">切换暗色模式</span>
+                </button>
+                <button id="logoutBtn" class="sidebar-btn sidebar-btn-danger">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/>
+                    </svg>
+                    <span>退出登录</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 移动端顶部导航 -->
+            <div class="mobile-header">
+                <div class="mobile-header-left">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                    <span>Antigravity</span>
+                </div>
+                <div class="mobile-header-right">
+                    <button id="darkModeToggleMobile" class="mobile-icon-btn">
+                        <svg class="icon-light" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                        </svg>
+                        <svg class="icon-dark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+                        </svg>
+                    </button>
+                    <button id="mobileNavToggle" class="mobile-icon-btn">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Token管理页面 -->
+            <div id="tokensPage" class="content-page">
+                <div class="container">
+                    <!-- 统计卡片 -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-card-content">
+                                <div class="stat-info">
+                                    <div class="stat-label">总 TOKEN 数</div>
+                                    <div class="stat-value" id="totalTokens">0</div>
+                                </div>
+                                <div class="stat-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/>
+                                        <rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card stat-card-success">
+                            <div class="stat-card-content">
+                                <div class="stat-info">
+                                    <div class="stat-label">已启用</div>
+                                    <div class="stat-value" id="enabledTokens">0</div>
+                                </div>
+                                <div class="stat-icon stat-icon-success">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-card-content">
+                                <div class="stat-info">
+                                    <div class="stat-label">已禁用</div>
+                                    <div class="stat-value" id="disabledTokens">0</div>
+                                </div>
+                                <div class="stat-icon">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M18 6 6 18M6 6l12 12"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 操作栏 -->
+                    <div class="actions-bar">
+                        <h2 class="page-title">凭证列表</h2>
+                        <div class="actions-buttons">
+                            <button id="refreshTokensBtn" class="btn btn-secondary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+                                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+                                </svg>
+                            </button>
+                            <button id="addTokenBtn" class="btn btn-primary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M5 12h14M12 5v14"/>
+                                </svg>
+                                <span>添加</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Token表格 -->
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>账号信息 (Project ID)</th>
+                                        <th>Token 详情</th>
+                                        <th class="text-center">状态</th>
+                                        <th class="text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tokenTableBody">
+                                    <tr class="table-empty">
+                                        <td colspan="4">
+                                            <div class="empty-state">
+                                                <div class="empty-icon">📦</div>
+                                                <div class="empty-text">暂无 Token，点击上方「添加」按钮添加</div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- Token网格 -->
-                <div id="tokenList" class="token-grid">
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📦</div>
-                        <div class="empty-state-text">暂无Token</div>
-                        <div class="empty-state-hint">点击上方按钮添加您的第一个Token</div>
+            <!-- 设置页面 -->
+            <div id="settingsPage" class="content-page hidden">
+                <div class="container container-narrow">
+                    <div class="settings-header">
+                        <h2 class="page-title">系统设置</h2>
+                        <p class="page-subtitle">修改 config.json 与服务器参数</p>
                     </div>
-                </div>
-                </div>
 
-                <!-- 设置页面 -->
-                <div id="settingsPage" class="hidden">
-                    <h3>⚙️ 系统配置</h3>
-                    <form id="configForm" class="config-form">
-                        <div class="config-section">
-                            <h4>服务器配置</h4>
-                            <div class="form-group"><label>端口 PORT</label><input type="number" name="PORT"></div>
-                            <div class="form-group"><label>监听地址 HOST</label><input type="text" name="HOST"></div>
+                    <form id="configForm" class="settings-form">
+                        <!-- 服务器配置 -->
+                        <div class="settings-section">
+                            <h3 class="section-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                                </svg>
+                                服务器配置 (Server)
+                            </h3>
+                            <div class="form-grid form-grid-3">
+                                <div class="form-group">
+                                    <label>端口 (Port)</label>
+                                    <input type="number" name="PORT" placeholder="8045">
+                                </div>
+                                <div class="form-group">
+                                    <label>Host</label>
+                                    <input type="text" name="HOST" placeholder="0.0.0.0">
+                                </div>
+                                <div class="form-group">
+                                    <label>最大请求大小</label>
+                                    <input type="text" name="MAX_REQUEST_SIZE" placeholder="50mb">
+                                </div>
+                            </div>
                         </div>
-                        <div class="config-section">
-                            <h4>默认参数</h4>
-                            <div class="form-group"><label>温度 TEMPERATURE</label><input type="number" step="0.1" name="DEFAULT_TEMPERATURE"></div>
-                            <div class="form-group"><label>Top P</label><input type="number" step="0.01" name="DEFAULT_TOP_P"></div>
-                            <div class="form-group"><label>Top K</label><input type="number" name="DEFAULT_TOP_K"></div>
-                            <div class="form-group"><label>最大Token数</label><input type="number" name="DEFAULT_MAX_TOKENS"></div>
+
+                        <!-- 模型默认参数 -->
+                        <div class="settings-section">
+                            <h3 class="section-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                模型默认参数 (Defaults)
+                            </h3>
+                            <div class="form-grid form-grid-4">
+                                <div class="form-group">
+                                    <label>Temperature</label>
+                                    <input type="number" step="0.1" name="DEFAULT_TEMPERATURE" placeholder="1.0">
+                                </div>
+                                <div class="form-group">
+                                    <label>Top P</label>
+                                    <input type="number" step="0.01" name="DEFAULT_TOP_P" placeholder="0.85">
+                                </div>
+                                <div class="form-group">
+                                    <label>Top K</label>
+                                    <input type="number" name="DEFAULT_TOP_K" placeholder="50">
+                                </div>
+                                <div class="form-group">
+                                    <label>Max Tokens</label>
+                                    <input type="number" name="DEFAULT_MAX_TOKENS" placeholder="8096">
+                                </div>
+                            </div>
                         </div>
-                        <div class="config-section">
-                            <h4>安全配置</h4>
-                            <div class="form-group"><label>API密钥</label><input type="text" name="API_KEY"></div>
-                            <div class="form-group"><label>最大请求大小</label><input type="text" name="MAX_REQUEST_SIZE"></div>
+
+                        <!-- 其他设置 -->
+                        <div class="settings-section">
+                            <h3 class="section-title">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                其他设置 (Other)
+                            </h3>
+                            <div class="settings-card">
+                                <div class="form-grid form-grid-2">
+                                    <div class="form-group">
+                                        <label>请求超时时间 (Timeout ms)</label>
+                                        <input type="number" name="TIMEOUT" placeholder="180000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>代理地址 (Proxy)</label>
+                                        <input type="text" name="PROXY" placeholder="http://127.0.0.1:7897">
+                                    </div>
+                                </div>
+                                <div class="toggle-group">
+                                    <label class="toggle-label">
+                                        <input type="checkbox" name="SKIP_PROJECT_ID_FETCH" class="toggle-checkbox">
+                                        <div class="toggle-switch"></div>
+                                        <div class="toggle-text">
+                                            <span class="toggle-title">跳过 ProjectId 验证 (Skip ProjectId Fetch)</span>
+                                            <span class="toggle-help">开启后将随机生成 Project ID，适用于 Pro 账号</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
-                        <div class="config-section">
-                            <h4>其他配置</h4>
-                            <div class="form-group"><label>超时时间(ms)</label><input type="number" name="TIMEOUT"></div>
-                            <div class="form-group"><label>代理地址</label><input type="text" name="PROXY" placeholder="http://127.0.0.1:7897"></div>
-                            <div class="form-group"><label>跳过ProjectId验证</label><select name="SKIP_PROJECT_ID_FETCH"><option value="false">否</option><option value="true">是</option></select></div>
-                            <div class="form-group"><label>系统提示词</label><textarea name="SYSTEM_INSTRUCTION" rows="3"></textarea></div>
+
+                        <!-- 安全与环境变量 -->
+                        <div class="settings-section">
+                            <h3 class="section-title">安全与环境变量 (Env / Security)</h3>
+                            <div class="form-group">
+                                <label>API Key</label>
+                                <input type="text" name="API_KEY" placeholder="sk-xxxx">
+                                <p class="form-help">客户端调用 API 时所需的 Bearer Token</p>
+                            </div>
+                            <div class="form-group">
+                                <label>System Instruction</label>
+                                <textarea name="SYSTEM_INSTRUCTION" rows="3" placeholder="输入系统提示词..."></textarea>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-success">💾 保存配置</button>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary btn-large">保存配置</button>
+                        </div>
                     </form>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <script src="app.js"></script>
