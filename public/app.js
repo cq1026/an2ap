@@ -190,6 +190,34 @@ function showMainApp() {
     document.getElementById('mainApp').classList.remove('hidden');
 }
 
+function showOAuthModal() {
+    showToast('点击后请在新窗口完成授权', 'info', '提示');
+    const modal = document.createElement('div');
+    modal.className = 'modal form-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-title">🔐 OAuth授权登录</div>
+            <div class="oauth-steps">
+                <p><strong>📝 授权流程：</strong></p>
+                <p>1️⃣ 点击下方按钮打开Google授权页面</p>
+                <p>2️⃣ 完成授权后，复制浏览器地址栏的完整URL</p>
+                <p>3️⃣ 粘贴URL到下方输入框并提交</p>
+            </div>
+            <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                <button type="button" onclick="openOAuthWindow()" class="btn btn-success" style="flex: 1;">🔐 打开授权页面</button>
+                <button type="button" onclick="copyOAuthUrl()" class="btn btn-info" style="width: 44px; padding: 0; font-size: 18px;" title="复制授权链接">📋</button>
+            </div>
+            <input type="text" id="modalCallbackUrl" placeholder="粘贴完整的回调URL (http://localhost:xxxxx/oauth-callback?code=...)">
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="this.closest('.modal').remove()">取消</button>
+                <button class="btn btn-success" onclick="processOAuthCallbackModal()">✅ 提交</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+}
+
 // ===== 页面切换（侧边栏导航） =====
 document.querySelectorAll('.nav-item').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -223,6 +251,89 @@ function switchPage(page) {
         document.getElementById('tokensPage').classList.add('hidden');
         document.getElementById('settingsPage').classList.remove('hidden');
         loadConfig();
+    }
+}
+
+function getOAuthUrl() {
+    if (!oauthPort) oauthPort = Math.floor(Math.random() * 10000) + 50000;
+    const redirectUri = `http://localhost:${oauthPort}/oauth-callback`;
+    return `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `access_type=offline&client_id=${CLIENT_ID}&prompt=consent&` +
+        `redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&` +
+        `scope=${encodeURIComponent(SCOPES)}&state=${Date.now()}`;
+}
+
+function openOAuthWindow() {
+    window.open(getOAuthUrl(), '_blank');
+}
+
+function copyOAuthUrl() {
+    const url = getOAuthUrl();
+    navigator.clipboard.writeText(url).then(() => {
+        showToast('授权链接已复制到剪贴板', 'success');
+    }).catch(() => {
+        showToast('复制失败，请手动复制', 'error');
+    });
+}
+
+async function processOAuthCallbackModal() {
+    const modal = document.querySelector('.form-modal');
+    const callbackUrl = document.getElementById('modalCallbackUrl').value.trim();
+    if (!callbackUrl) {
+        showToast('请输入回调URL', 'warning');
+        return;
+    }
+
+    showLoading('正在处理授权...');
+
+    try {
+        const url = new URL(callbackUrl);
+        const code = url.searchParams.get('code');
+        const port = new URL(url.origin).port || (url.protocol === 'https:' ? 443 : 80);
+
+        if (!code) {
+            hideLoading();
+            showToast('URL中未找到授权码，请检查URL是否完整', 'error');
+            return;
+        }
+
+        const response = await authFetch('/admin/oauth/exchange', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({ code, port })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            const account = result.data;
+            const addResponse = await authFetch('/admin/tokens', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify(account)
+            });
+
+            const addResult = await addResponse.json();
+            hideLoading();
+            if (addResult.success) {
+                modal.remove();
+                showToast('Token添加成功！', 'success');
+                loadTokens();
+            } else {
+                showToast('Token添加失败: ' + addResult.message, 'error');
+            }
+        } else {
+            hideLoading();
+            showToast('Token交换失败: ' + result.message, 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('处理失败: ' + error.message, 'error');
     }
 }
 
@@ -470,17 +581,6 @@ function showAddTokenModal() {
     };
 
     document.body.appendChild(overlay);
-}
-
-function openOAuthWindow() {
-    oauthPort = Math.floor(Math.random() * 10000) + 50000;
-    const redirectUri = `http://localhost:${oauthPort}/oauth-callback`;
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `access_type=offline&client_id=${CLIENT_ID}&prompt=consent&` +
-        `redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&` +
-        `scope=${encodeURIComponent(SCOPES)}&state=${Date.now()}`;
-    window.open(authUrl, '_blank');
-    showToast('请在新窗口完成授权', 'info');
 }
 
 async function processOAuthCallback() {
