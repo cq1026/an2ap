@@ -163,8 +163,12 @@ body {
     padding: var(--spacing-8);
     border-radius: var(--radius-2xl);  /* 设计稿: rounded-2xl */
     box-shadow: var(--shadow-xl);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--zinc-100);  /* 亮色模式: zinc-100 更通透精致 */
     transition: background-color 0.2s, border-color 0.2s;
+}
+
+.dark .login-card {
+    border-color: var(--zinc-800);  /* 深色模式: zinc-800 */
 }
 
 .login-icon {
@@ -173,14 +177,17 @@ body {
     margin-bottom: var(--spacing-6);
 }
 
-.login-icon svg {
-    padding: var(--spacing-3);
+.login-icon-box {
+    padding: var(--spacing-3);  /* p-3: 12px */
     background-color: var(--zinc-900);
     color: white;
-    border-radius: var(--radius-xl);  /* 设计稿: rounded-xl = 12px */
+    border-radius: var(--radius-xl);  /* rounded-xl: 12px */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.dark .login-icon svg {
+.dark .login-icon-box {
     background-color: white;
     color: var(--zinc-900);
 }
