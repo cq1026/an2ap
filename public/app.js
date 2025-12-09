@@ -575,7 +575,7 @@ async function showQuotaModal(refreshToken, projectId = 'N/A') {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
-        <div class="modal-container" style="max-width: 600px;">
+        <div class="modal-container quota-modal">
             <div class="modal-header">
                 <div class="modal-title">额度详情</div>
                 <button class="modal-close">
@@ -587,12 +587,11 @@ async function showQuotaModal(refreshToken, projectId = 'N/A') {
             <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
                 <div class="quota-meta-row">
                     <span class="quota-project-id-badge">Project ID: ${projectId}</span>
-                    <button class="btn btn-secondary btn-sm" id="refreshQuotaBtn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button class="quota-refresh-btn" id="refreshQuotaBtn" title="立即刷新额度">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
                             <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
                         </svg>
-                        <span>刷新</span>
                     </button>
                 </div>
                 <div id="quotaContent">
@@ -617,8 +616,11 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
     if (!quotaContent) return;
 
     const refreshBtn = document.getElementById('refreshQuotaBtn');
+    const refreshIcon = refreshBtn ? refreshBtn.querySelector('svg') : null;
+
     if (refreshBtn) {
         refreshBtn.disabled = true;
+        if (refreshIcon) refreshIcon.classList.add('animate-spin');
     }
 
     quotaContent.innerHTML = '<div class="quota-loading">加载中...</div>';
@@ -640,10 +642,6 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                 return;
             }
 
-            const lastUpdated = new Date(quotaData.lastUpdated).toLocaleString('zh-CN', {
-                month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
-            });
-
             // 按模型类型分组
             const grouped = { claude: [], gemini: [], other: [] };
             Object.entries(models).forEach(([modelId, quota]) => {
@@ -653,7 +651,7 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                 else grouped.other.push(item);
             });
 
-            let html = `<div class="quota-header">更新于 ${lastUpdated}</div>`;
+            let html = '';
 
             // 渲染各组
             if (grouped.claude.length > 0) {
@@ -757,6 +755,7 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
     } finally {
         if (refreshBtn) {
             refreshBtn.disabled = false;
+            if (refreshIcon) refreshIcon.classList.remove('animate-spin');
         }
     }
 }

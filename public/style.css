@@ -1093,7 +1093,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-6);
+    padding: var(--spacing-4) var(--spacing-6);  /* 垂直16px 水平24px */
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -1293,12 +1293,45 @@ body {
 }
 
 /* ===== 15. 额度显示 ===== */
+/* 额度弹窗专用尺寸 */
+.quota-modal {
+    max-width: 512px;  /* max-w-lg */
+}
+
 /* Project ID 和刷新按钮行 */
 .quota-meta-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--spacing-4);
+}
+
+/* 刷新按钮 - 仅图标，带旋转动画 */
+.quota-refresh-btn {
+    padding: var(--spacing-2);
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.quota-refresh-btn:hover {
+    background-color: var(--zinc-100);
+    color: var(--text-primary);
+}
+
+.dark .quota-refresh-btn:hover {
+    background-color: var(--zinc-800);
+}
+
+.quota-refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .quota-project-id-badge {
@@ -1314,21 +1347,6 @@ body {
 .dark .quota-project-id-badge {
     background-color: var(--zinc-800);
     color: var(--zinc-400);
-}
-
-.quota-header {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    padding: var(--spacing-2) var(--spacing-3);
-    background-color: var(--zinc-50);
-    border: 1px solid var(--zinc-200);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--spacing-4);
-}
-
-.dark .quota-header {
-    background-color: var(--zinc-800);
-    border-color: var(--zinc-700);
 }
 
 .quota-group-title {
@@ -1405,13 +1423,15 @@ body {
 .quota-bar-container {
     width: 100%;
     height: 8px;
-    background-color: var(--zinc-200);
+    background-color: var(--zinc-100);
+    border: 1px solid var(--zinc-100);
     border-radius: 9999px;
     overflow: hidden;
 }
 
 .dark .quota-bar-container {
     background-color: var(--zinc-700);
+    border-color: var(--zinc-700);
 }
 
 .quota-bar {
@@ -1445,14 +1465,22 @@ body {
 }
 
 .quota-remaining-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    font-size: 0.625rem;  /* 10px - text-[10px] */
+    color: var(--zinc-400);
+}
+
+.dark .quota-remaining-label {
+    color: var(--zinc-500);
 }
 
 .quota-percentage-value {
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-size: 0.625rem;  /* 10px - text-[10px] */
+    font-weight: 500;     /* font-medium */
+    color: var(--zinc-700);
+}
+
+.dark .quota-percentage-value {
+    color: var(--zinc-300);
 }
 
 .quota-loading,
