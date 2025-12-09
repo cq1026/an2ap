@@ -652,6 +652,24 @@ body {
     display: block;
 }
 
+.mobile-logout-btn {
+    color: var(--red-600);  /* 红色图标 */
+}
+
+.mobile-logout-btn:hover {
+    background-color: var(--red-50);  /* 红色背景 */
+    color: var(--red-600);
+}
+
+.dark .mobile-logout-btn {
+    color: var(--red-500);
+}
+
+.dark .mobile-logout-btn:hover {
+    background-color: rgba(239, 68, 68, 0.1);  /* 深色模式下的红色背景 */
+    color: var(--red-400);
+}
+
 /* 内容页面 */
 .content-page {
     flex: 1;
@@ -868,6 +886,8 @@ body {
     font-size: 0.75rem;
     font-weight: 500;
     border: 1px solid;
+    white-space: nowrap;  /* 防止文字换行 */
+    flex-shrink: 0;       /* 防止被flex容器挤压 */
 }
 
 .status-badge-enabled {
@@ -1405,12 +1425,18 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--spacing-2);
+    gap: var(--spacing-2);  /* 确保有间距 */
+    flex-wrap: nowrap;      /* 防止换行 */
 }
 
 .quota-model-name {
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-primary);
+    overflow: hidden;         /* 如果太长则隐藏 */
+    text-overflow: ellipsis;  /* 显示省略号 */
+    white-space: nowrap;      /* 不换行 */
+    min-width: 0;             /* 允许flex收缩 */
 }
 
 .quota-reset-badge {
@@ -1423,6 +1449,8 @@ body {
     border: 1px solid var(--zinc-200);
     padding: 2px 8px;
     border-radius: 9999px;
+    white-space: nowrap;  /* 防止文字换行 */
+    flex-shrink: 0;       /* 防止被flex容器挤压 */
 }
 
 .dark .quota-reset-badge {
