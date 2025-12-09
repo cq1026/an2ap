@@ -237,7 +237,9 @@ document.getElementById('refreshTokensBtn').addEventListener('click', loadTokens
 
 async function loadTokens() {
     const btn = document.getElementById('refreshTokensBtn');
+    const icon = btn.querySelector('svg');
     btn.disabled = true;
+    if (icon) icon.classList.add('animate-spin');
 
     try {
         const response = await fetch('/admin/tokens', {
@@ -252,6 +254,7 @@ async function loadTokens() {
         const data = await response.json();
         if (data.success) {
             renderTokens(data.data);
+            showToast('Token列表已刷新', 'success');
         } else {
             showToast('加载失败: ' + (data.message || '未知错误'), 'error');
         }
@@ -259,6 +262,7 @@ async function loadTokens() {
         showToast('加载Token失败: ' + error.message, 'error');
     } finally {
         btn.disabled = false;
+        if (icon) icon.classList.remove('animate-spin');
     }
 }
 
@@ -303,9 +307,9 @@ function renderTokens(tokens) {
                     ${token.enable ? '启用' : '禁用'}
                 </span>
             </td>
-            <td>
+            <td class="text-center">
                 <div class="action-buttons">
-                    <button class="btn btn-secondary btn-sm" onclick="showQuotaModal('${token.refresh_token}')">额度</button>
+                    <button class="btn btn-secondary btn-sm" onclick="showQuotaModal('${token.refresh_token}', '${token.projectId || 'N/A'}')">额度</button>
                     <button class="btn ${token.enable ? 'btn-secondary' : 'btn-primary'} btn-sm" onclick="toggleToken('${token.refresh_token}', ${!token.enable})">
                         ${token.enable ? '禁用' : '启用'}
                     </button>
@@ -446,7 +450,7 @@ function showAddTokenModal() {
             overlay.querySelectorAll('.modal-tab-content').forEach(content => {
                 content.classList.add('hidden');
             });
-            overlay.getElementById(tabName + 'Tab').classList.remove('hidden');
+            overlay.querySelector('#' + tabName + 'Tab').classList.remove('hidden');
         });
     });
 
@@ -567,33 +571,34 @@ async function addTokenManually() {
 }
 
 // ===== 额度查看 Modal =====
-async function showQuotaModal(refreshToken) {
+async function showQuotaModal(refreshToken, projectId = 'N/A') {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `
         <div class="modal-container" style="max-width: 600px;">
             <div class="modal-header">
-                <div class="modal-title">📊 模型额度信息</div>
-                <button class="modal-close">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M18 6 6 18M6 6l12 12"/>
-                    </svg>
-                </button>
+                <div style="display: flex; flex-direction: column; gap: var(--spacing-2);">
+                    <div class="modal-title">额度详情</div>
+                    <span class="quota-project-id-badge">Project ID: ${projectId}</span>
+                </div>
+                <div style="display: flex; gap: var(--spacing-2);">
+                    <button class="btn btn-secondary" id="refreshQuotaBtn" style="height: 32px; width: 32px; padding: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+                        </svg>
+                    </button>
+                    <button class="modal-close">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M18 6 6 18M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
                 <div id="quotaContent">
                     <div class="quota-loading">加载中...</div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" id="refreshQuotaBtn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
-                        <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
-                    </svg>
-                    <span>立即刷新</span>
-                </button>
-                <button class="btn btn-secondary btn-sm" onclick="this.closest('.modal-overlay').remove()">关闭</button>
             </div>
         </div>
     `;
@@ -660,11 +665,18 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                     html += `
                         <div class="quota-item">
                             <div class="quota-model-name">${modelId}</div>
-                            <div class="quota-bar-container">
-                                <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                            <div class="quota-bar-wrapper">
+                                <div class="quota-bar-container">
+                                    <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                                </div>
                                 <span class="quota-percentage">${percentage}%</span>
                             </div>
-                            <div class="quota-reset">🔄 重置: ${quota.resetTime}</div>
+                            <div class="quota-reset">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span class="font-mono">${quota.resetTime}</span>
+                            </div>
                         </div>
                     `;
                 });
@@ -678,11 +690,18 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                     html += `
                         <div class="quota-item">
                             <div class="quota-model-name">${modelId}</div>
-                            <div class="quota-bar-container">
-                                <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                            <div class="quota-bar-wrapper">
+                                <div class="quota-bar-container">
+                                    <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                                </div>
                                 <span class="quota-percentage">${percentage}%</span>
                             </div>
-                            <div class="quota-reset">🔄 重置: ${quota.resetTime}</div>
+                            <div class="quota-reset">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span class="font-mono">${quota.resetTime}</span>
+                            </div>
                         </div>
                     `;
                 });
@@ -696,11 +715,18 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                     html += `
                         <div class="quota-item">
                             <div class="quota-model-name">${modelId}</div>
-                            <div class="quota-bar-container">
-                                <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                            <div class="quota-bar-wrapper">
+                                <div class="quota-bar-container">
+                                    <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                                </div>
                                 <span class="quota-percentage">${percentage}%</span>
                             </div>
-                            <div class="quota-reset">🔄 重置: ${quota.resetTime}</div>
+                            <div class="quota-reset">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                </svg>
+                                <span class="font-mono">${quota.resetTime}</span>
+                            </div>
                         </div>
                     `;
                 });
