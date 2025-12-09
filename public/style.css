@@ -234,19 +234,19 @@ body {
 }
 
 .dark-mode-toggle-login .icon-light {
-    display: block;
+    display: none;  /* 亮色模式时隐藏太阳图标 */
 }
 
 .dark-mode-toggle-login .icon-dark {
-    display: none;
+    display: block;  /* 亮色模式时显示月亮图标 */
 }
 
 .dark .dark-mode-toggle-login .icon-light {
-    display: none;
+    display: block;  /* 深色模式时显示太阳图标 */
 }
 
 .dark .dark-mode-toggle-login .icon-dark {
-    display: block;
+    display: none;  /* 深色模式时隐藏月亮图标 */
 }
 
 /* ===== 5. 表单元素 ===== */
