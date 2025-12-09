@@ -10,6 +10,17 @@ const SCOPES = [
     'https://www.googleapis.com/auth/experimentsandconfigs'
 ].join(' ');
 
+// 封装fetch，自动处理401
+const authFetch = async (url, options = {}) => {
+    const response = await fetch(url, options);
+    if (response.status === 401) {
+        silentLogout();
+        showToast('登录已过期，请重新登录', 'warning');
+        throw new Error('Unauthorized');
+    }
+    return response;
+};
+
 // ===== 深色模式管理 =====
 function initDarkMode() {
     const isDark = localStorage.getItem('darkMode') === 'true';
@@ -219,14 +230,18 @@ function switchPage(page) {
 document.getElementById('logoutBtn').addEventListener('click', logout);
 document.getElementById('logoutBtnMobile').addEventListener('click', logout);
 
-async function logout() {
-    const confirmed = await showConfirm('确定要退出登录吗？', '退出确认');
-    if (!confirmed) return;
-
+function silentLogout() {
     localStorage.removeItem('authToken');
     authToken = null;
     document.getElementById('loginPage').classList.remove('hidden');
     document.getElementById('mainApp').classList.add('hidden');
+}
+
+async function logout() {
+    const confirmed = await showConfirm('确定要退出登录吗？', '退出确认');
+    if (!confirmed) return;
+
+    silentLogout();
     showToast('已退出登录', 'info');
 }
 
@@ -241,14 +256,9 @@ async function loadTokens() {
     if (icon) icon.classList.add('animate-spin');
 
     try {
-        const response = await fetch('/admin/tokens', {
+        const response = await authFetch('/admin/tokens', {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-
-        if (response.status === 401) {
-            logout();
-            return;
-        }
 
         const data = await response.json();
         if (data.success) {
@@ -330,7 +340,7 @@ async function toggleToken(refreshToken, enable) {
 
     showLoading(`正在${action}Token...`);
     try {
-        const response = await fetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
+        const response = await authFetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -359,7 +369,7 @@ async function deleteToken(refreshToken) {
 
     showLoading('正在删除Token...');
     try {
-        const response = await fetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
+        const response = await authFetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
@@ -493,7 +503,7 @@ async function processOAuthCallback() {
             return;
         }
 
-        const response = await fetch('/admin/oauth/exchange', {
+        const response = await authFetch('/admin/oauth/exchange', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -505,7 +515,7 @@ async function processOAuthCallback() {
         const result = await response.json();
         if (result.success) {
             const account = result.data;
-            const addResponse = await fetch('/admin/tokens', {
+            const addResponse = await authFetch('/admin/tokens', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -626,7 +636,7 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
 
     try {
         const url = `/admin/tokens/${encodeURIComponent(refreshToken)}/quotas${forceRefresh ? '?refresh=true' : ''}`;
-        const response = await fetch(url, {
+        const response = await authFetch(url, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
@@ -762,7 +772,7 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
 // ===== 配置管理 =====
 async function loadConfig() {
     try {
-        const response = await fetch('/admin/config', {
+        const response = await authFetch('/admin/config', {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         const data = await response.json();
@@ -853,7 +863,7 @@ document.getElementById('configForm').addEventListener('submit', async (e) => {
 
     showLoading('正在保存配置...');
     try {
-        const response = await fetch('/admin/config', {
+        const response = await authFetch('/admin/config', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
