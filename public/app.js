@@ -217,6 +217,7 @@ function switchPage(page) {
 
 // ===== 退出登录 =====
 document.getElementById('logoutBtn').addEventListener('click', logout);
+document.getElementById('logoutBtnMobile').addEventListener('click', logout);
 
 async function logout() {
     const confirmed = await showConfirm('确定要退出登录吗？', '退出确认');
