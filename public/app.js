@@ -577,25 +577,24 @@ async function showQuotaModal(refreshToken, projectId = 'N/A') {
     overlay.innerHTML = `
         <div class="modal-container" style="max-width: 600px;">
             <div class="modal-header">
-                <div style="display: flex; flex-direction: column; gap: var(--spacing-2);">
-                    <div class="modal-title">额度详情</div>
+                <div class="modal-title">额度详情</div>
+                <button class="modal-close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                <div class="quota-meta-row">
                     <span class="quota-project-id-badge">Project ID: ${projectId}</span>
-                </div>
-                <div style="display: flex; gap: var(--spacing-2);">
-                    <button class="btn btn-secondary" id="refreshQuotaBtn" style="height: 32px; width: 32px; padding: 0;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <button class="btn btn-secondary btn-sm" id="refreshQuotaBtn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
                             <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
                         </svg>
-                    </button>
-                    <button class="modal-close">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 6 6 18M6 6l12 12"/>
-                        </svg>
+                        <span>刷新</span>
                     </button>
                 </div>
-            </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
                 <div id="quotaContent">
                     <div class="quota-loading">加载中...</div>
                 </div>
@@ -661,21 +660,26 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                 html += '<div class="quota-group-title">🤖 Claude 模型</div>';
                 grouped.claude.forEach(({ modelId, quota }) => {
                     const percentage = (quota.remaining * 100).toFixed(1);
-                    const barColor = percentage > 50 ? 'var(--zinc-800)' : percentage > 20 ? 'var(--amber-500)' : 'var(--red-500)';
+                    const barClass = percentage > 50 ? 'progress-bar-fill' : percentage > 20 ? 'progress-bar-warning' : 'progress-bar-danger';
                     html += `
                         <div class="quota-item">
-                            <div class="quota-model-name">${modelId}</div>
-                            <div class="quota-bar-wrapper">
-                                <div class="quota-bar-container">
-                                    <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                            <div class="quota-row-1">
+                                <div class="quota-model-name">${modelId}</div>
+                                <div class="quota-reset-badge">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                    <span class="font-mono">${quota.resetTime}</span>
                                 </div>
-                                <span class="quota-percentage">${percentage}%</span>
                             </div>
-                            <div class="quota-reset">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                                </svg>
-                                <span class="font-mono">${quota.resetTime}</span>
+                            <div class="quota-row-2">
+                                <div class="quota-bar-container">
+                                    <div class="quota-bar ${barClass}" style="width: ${percentage}%;"></div>
+                                </div>
+                            </div>
+                            <div class="quota-row-3">
+                                <span class="quota-remaining-label">剩余</span>
+                                <span class="quota-percentage-value">${percentage}%</span>
                             </div>
                         </div>
                     `;
@@ -686,21 +690,26 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                 html += '<div class="quota-group-title">💎 Gemini 模型</div>';
                 grouped.gemini.forEach(({ modelId, quota }) => {
                     const percentage = (quota.remaining * 100).toFixed(1);
-                    const barColor = percentage > 50 ? 'var(--zinc-800)' : percentage > 20 ? 'var(--amber-500)' : 'var(--red-500)';
+                    const barClass = percentage > 50 ? 'progress-bar-fill' : percentage > 20 ? 'progress-bar-warning' : 'progress-bar-danger';
                     html += `
                         <div class="quota-item">
-                            <div class="quota-model-name">${modelId}</div>
-                            <div class="quota-bar-wrapper">
-                                <div class="quota-bar-container">
-                                    <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                            <div class="quota-row-1">
+                                <div class="quota-model-name">${modelId}</div>
+                                <div class="quota-reset-badge">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                    <span class="font-mono">${quota.resetTime}</span>
                                 </div>
-                                <span class="quota-percentage">${percentage}%</span>
                             </div>
-                            <div class="quota-reset">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                                </svg>
-                                <span class="font-mono">${quota.resetTime}</span>
+                            <div class="quota-row-2">
+                                <div class="quota-bar-container">
+                                    <div class="quota-bar ${barClass}" style="width: ${percentage}%;"></div>
+                                </div>
+                            </div>
+                            <div class="quota-row-3">
+                                <span class="quota-remaining-label">剩余</span>
+                                <span class="quota-percentage-value">${percentage}%</span>
                             </div>
                         </div>
                     `;
@@ -711,21 +720,26 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                 html += '<div class="quota-group-title">🔧 其他模型</div>';
                 grouped.other.forEach(({ modelId, quota }) => {
                     const percentage = (quota.remaining * 100).toFixed(1);
-                    const barColor = percentage > 50 ? 'var(--zinc-800)' : percentage > 20 ? 'var(--amber-500)' : 'var(--red-500)';
+                    const barClass = percentage > 50 ? 'progress-bar-fill' : percentage > 20 ? 'progress-bar-warning' : 'progress-bar-danger';
                     html += `
                         <div class="quota-item">
-                            <div class="quota-model-name">${modelId}</div>
-                            <div class="quota-bar-wrapper">
-                                <div class="quota-bar-container">
-                                    <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
+                            <div class="quota-row-1">
+                                <div class="quota-model-name">${modelId}</div>
+                                <div class="quota-reset-badge">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                    </svg>
+                                    <span class="font-mono">${quota.resetTime}</span>
                                 </div>
-                                <span class="quota-percentage">${percentage}%</span>
                             </div>
-                            <div class="quota-reset">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                                </svg>
-                                <span class="font-mono">${quota.resetTime}</span>
+                            <div class="quota-row-2">
+                                <div class="quota-bar-container">
+                                    <div class="quota-bar ${barClass}" style="width: ${percentage}%;"></div>
+                                </div>
+                            </div>
+                            <div class="quota-row-3">
+                                <span class="quota-remaining-label">剩余</span>
+                                <span class="quota-percentage-value">${percentage}%</span>
                             </div>
                         </div>
                     `;

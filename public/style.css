@@ -256,10 +256,10 @@ body {
 .form-group textarea,
 .form-group select {
     width: 100%;
-    padding: var(--spacing-2) var(--spacing-3);
+    padding: 10px var(--spacing-3);  /* 增加垂直 padding 到 10px，总高度约 36px-40px */
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);  /* 6px - rounded-md */
     font-size: 0.875rem;
     color: var(--text-primary);
     transition: all 0.2s;
@@ -807,6 +807,12 @@ body {
     color: var(--text-primary);
 }
 
+/* 强制表格标题和单元格居中对齐 */
+.table th.text-center,
+.table td.text-center {
+    text-align: center;
+}
+
 .table-empty td {
     padding: var(--spacing-8) 0;
 }
@@ -897,7 +903,7 @@ body {
 
 .btn-sm {
     height: 32px;
-    padding: 0 var(--spacing-3);
+    padding: 2px 8px;  /* 减小内边距，避免撑大行高 */
     font-size: 0.75rem;
 }
 
@@ -1080,6 +1086,7 @@ body {
     display: flex;
     flex-direction: column;
     animation: slideUp 0.3s ease-out;
+    overflow: hidden;  /* 防止内部元素遮挡底部圆角 */
 }
 
 .modal-header {
@@ -1286,13 +1293,21 @@ body {
 }
 
 /* ===== 15. 额度显示 ===== */
+/* Project ID 和刷新按钮行 */
+.quota-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-4);
+}
+
 .quota-project-id-badge {
     font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-secondary);
-    background-color: var(--zinc-100);
-    padding: var(--spacing-1) var(--spacing-2);
-    border-radius: var(--radius-md);
+    background-color: var(--zinc-50);  /* 灰底胶囊 */
+    padding: var(--spacing-1) var(--spacing-3);
+    border-radius: 9999px;
     font-family: 'Courier New', monospace;
 }
 
@@ -1350,22 +1365,45 @@ body {
     background-color: rgba(39, 39, 42, 0.5);
 }
 
+/* 三段式布局 */
+/* Row 1: 模型名称 + 重置时间徽章 */
+.quota-row-1 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-2);
+}
+
 .quota-model-name {
     font-size: 0.875rem;
     font-weight: 500;
     color: var(--text-primary);
-    margin-bottom: var(--spacing-2);
 }
 
-.quota-bar-wrapper {
+.quota-reset-badge {
     display: flex;
     align-items: center;
-    gap: var(--spacing-2);
+    gap: 4px;
+    font-size: 0.625rem;
+    color: var(--text-secondary);
+    background-color: white;
+    border: 1px solid var(--zinc-200);
+    padding: 2px 8px;
+    border-radius: 9999px;
+}
+
+.dark .quota-reset-badge {
+    background-color: var(--zinc-900);
+    border-color: var(--zinc-700);
+}
+
+/* Row 2: 纯进度条 */
+.quota-row-2 {
     margin-bottom: var(--spacing-2);
 }
 
 .quota-bar-container {
-    flex: 1;
+    width: 100%;
     height: 8px;
     background-color: var(--zinc-200);
     border-radius: 9999px;
@@ -1382,20 +1420,39 @@ body {
     transition: width 0.5s ease-in-out;
 }
 
-.quota-percentage {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-primary);
-    min-width: 40px;
-    text-align: right;
+/* 进度条颜色类 - 修复深色模式 */
+.progress-bar-fill {
+    background-color: var(--zinc-800);
 }
 
-.quota-reset {
+.dark .progress-bar-fill {
+    background-color: var(--zinc-200);  /* 深色模式下使用浅色 */
+}
+
+.progress-bar-warning {
+    background-color: var(--amber-500);
+}
+
+.progress-bar-danger {
+    background-color: var(--red-500);
+}
+
+/* Row 3: 剩余标签 + 百分比数值 */
+.quota-row-3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quota-remaining-label {
     font-size: 0.75rem;
     color: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-1);
+}
+
+.quota-percentage-value {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .quota-loading,
@@ -1586,7 +1643,7 @@ body {
 
 /* ===== 19. 确认对话框 ===== */
 .confirm-modal {
-    max-width: 400px;
+    max-width: 384px;  /* max-w-sm: 更小巧精致 */
 }
 
 .confirm-message {
