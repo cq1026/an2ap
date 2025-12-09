@@ -57,6 +57,7 @@
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);  /* Tailwind shadow-2xl */
 
     /* 背景色 */
     --bg-page: var(--zinc-50);
@@ -163,8 +164,12 @@ body {
     padding: var(--spacing-8);
     border-radius: var(--radius-2xl);  /* 设计稿: rounded-2xl */
     box-shadow: var(--shadow-xl);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--zinc-100);  /* 亮色模式: zinc-100 更通透精致 */
     transition: background-color 0.2s, border-color 0.2s;
+}
+
+.dark .login-card {
+    border-color: var(--zinc-800);  /* 深色模式: zinc-800 */
 }
 
 .login-icon {
@@ -173,14 +178,17 @@ body {
     margin-bottom: var(--spacing-6);
 }
 
-.login-icon svg {
-    padding: var(--spacing-3);
+.login-icon-box {
+    padding: var(--spacing-3);  /* p-3: 12px */
     background-color: var(--zinc-900);
     color: white;
-    border-radius: var(--radius-xl);  /* 设计稿: rounded-xl = 12px */
+    border-radius: var(--radius-xl);  /* rounded-xl: 12px */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.dark .login-icon svg {
+.dark .login-icon-box {
     background-color: white;
     color: var(--zinc-900);
 }
@@ -652,10 +660,17 @@ body {
 }
 
 .container {
-    max-width: 1280px;
+    max-width: 1152px;  /* max-w-6xl: 严格对应设计稿 */
     width: 100%;
     margin: 0 auto;
-    padding: var(--spacing-6) var(--spacing-8);
+    padding: var(--spacing-6) var(--spacing-6);  /* 移动端: 24px */
+}
+
+/* 桌面端: 32px padding */
+@media (min-width: 768px) {
+    .container {
+        padding: var(--spacing-6) var(--spacing-8);  /* 24px 32px */
+    }
 }
 
 .container-narrow {
@@ -1671,14 +1686,38 @@ body {
 
 /* ===== 19. 确认对话框 ===== */
 .confirm-modal {
-    max-width: 384px;  /* max-w-sm: 更小巧精致 */
+    max-width: 384px;  /* max-w-sm: 严格对应设计稿 */
+    box-shadow: var(--shadow-2xl);  /* 隐性细节1: 加深阴影 */
+}
+
+.confirm-content {
+    padding: var(--spacing-6);  /* 隐性细节2: 24px padding */
+}
+
+.confirm-title {
+    font-size: 1.125rem;  /* 隐性细节3: 18px (font-semibold) */
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-2);  /* 隐性细节4: 8px 底部间距 */
 }
 
 .confirm-message {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    margin-top: var(--spacing-2);
-    line-height: 1.6;
+    font-size: 0.875rem;  /* 14px (text-sm) */
+    color: var(--text-secondary);  /* 隐性细节5: 灰色，更有层次 */
+    line-height: 1.5;  /* 设计稿标准行高 */
+}
+
+.confirm-footer {
+    padding: var(--spacing-4) var(--spacing-6);  /* 隐性细节6: 16px 24px (px-6 py-4) */
+    border-top: 1px solid var(--border-color);
+    background-color: var(--zinc-50);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+}
+
+.dark .confirm-footer {
+    background-color: rgba(39, 39, 42, 0.5);  /* dark:bg-zinc-800/50 */
 }
 
 /* ===== 20. 辅助样式 ===== */
