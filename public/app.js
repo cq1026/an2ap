@@ -75,13 +75,11 @@ function showConfirm(message, title = '确认操作') {
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
             <div class="modal-container confirm-modal">
-                <div class="modal-header">
-                    <div class="modal-title">${title}</div>
-                </div>
-                <div class="modal-body">
+                <div class="confirm-content">
+                    <h3 class="confirm-title">${title}</h3>
                     <p class="confirm-message">${message}</p>
                 </div>
-                <div class="modal-footer">
+                <div class="confirm-footer">
                     <button class="btn btn-secondary btn-sm" data-action="cancel">取消</button>
                     <button class="btn btn-danger btn-sm" data-action="confirm">确定</button>
                 </div>
