@@ -526,12 +526,19 @@ function showAddTokenModal() {
                         <p>2. 授权完成后，复制浏览器地址栏的完整 URL。</p>
                         <p>3. 将 URL 粘贴到下方输入框。</p>
                     </div>
-                    <button class="btn btn-secondary" style="width: 100%; margin-bottom: 16px;" onclick="openOAuthWindow()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/>
-                        </svg>
-                        <span>打开授权页面</span>
-                    </button>
+                    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button class="btn btn-secondary" style="flex: 1;" onclick="openOAuthWindow()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/>
+                            </svg>
+                            <span>打开授权页面</span>
+                        </button>
+                        <button class="btn btn-secondary" style="width: 36px; height: 36px; padding: 0; flex-shrink: 0;" onclick="copyOAuthUrl()" title="复制授权链接">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="form-group">
                         <label>回调 URL</label>
                         <input type="text" id="oauthCallbackUrl" placeholder="http://localhost:xxxxx/oauth-callback?code=...">
