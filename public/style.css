@@ -20,8 +20,10 @@
 
     /* 功能色 */
     --emerald-50: #ecfdf5;
+    --emerald-400: #34d399;
     --emerald-500: #10b981;
     --emerald-600: #059669;
+    --emerald-700: #047857;
     --emerald-800: #065f46;
     --emerald-900: #064e3b;
 
@@ -541,19 +543,19 @@ body {
 }
 
 .sidebar-btn .text-light {
-    display: block;
+    display: none;  /* 亮色模式时隐藏"切换亮色模式" */
 }
 
 .sidebar-btn .text-dark {
-    display: none;
+    display: block;  /* 亮色模式时显示"切换暗色模式" */
 }
 
 .dark .sidebar-btn .text-light {
-    display: none;
+    display: block;  /* 暗色模式时显示"切换亮色模式" */
 }
 
 .dark .sidebar-btn .text-dark {
-    display: block;
+    display: none;  /* 暗色模式时隐藏"切换暗色模式" */
 }
 
 .sidebar-btn .icon-light {
@@ -857,13 +859,13 @@ body {
 
 .status-badge-enabled {
     background-color: var(--emerald-50);
-    color: var(--emerald-600);
-    border-color: var(--emerald-200);
+    color: var(--emerald-700);  /* text-emerald-700 */
+    border-color: #a7f3d0;  /* border-emerald-200 */
 }
 
 .dark .status-badge-enabled {
-    background-color: rgba(16, 185, 129, 0.2);
-    color: var(--emerald-500);
+    background-color: rgba(16, 185, 129, 0.3);  /* dark:bg-emerald-900/30 */
+    color: var(--emerald-400);  /* dark:text-emerald-400 */
     border-color: var(--emerald-800);
 }
 
@@ -903,7 +905,7 @@ body {
 
 .btn-sm {
     height: 32px;
-    padding: 2px 8px;  /* 减小内边距，避免撑大行高 */
+    padding: 2px 12px;  /* px-3: 12px 水平 padding */
     font-size: 0.75rem;
 }
 
