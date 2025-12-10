@@ -339,6 +339,32 @@ export async function generateAssistantResponseNoStream(requestBody, token) {
   return { content, toolCalls, usage: usageData };
 }
 
+export async function generateImageForSD(requestBody, token) {
+  const headers = buildHeaders(token);
+  let data;
+  //console.log(JSON.stringify(requestBody,null,2));
+  
+  try {
+    if (useAxios) {
+      data = (await axios(buildAxiosConfig(config.api.noStreamUrl, headers, requestBody))).data;
+    } else {
+      const response = await requester.antigravity_fetch(config.api.noStreamUrl, buildRequesterConfig(headers, requestBody));
+      if (response.status !== 200) {
+        const errorBody = await response.text();
+        throw { status: response.status, message: errorBody };
+      }
+      data = await response.json();
+    }
+  } catch (error) {
+    await handleApiError(error, token);
+  }
+  
+  const parts = data.response?.candidates?.[0]?.content?.parts || [];
+  const images = parts.filter(p => p.inlineData).map(p => p.inlineData.data);
+  
+  return images;
+}
+
 export function closeRequester() {
   if (requester) requester.close();
 }

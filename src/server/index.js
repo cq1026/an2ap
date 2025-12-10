@@ -1,7 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { generateAssistantResponse, generateAssistantResponseNoStream, getAvailableModels, closeRequester } from '../api/client.js';
+import { generateAssistantResponse, generateAssistantResponseNoStream, getAvailableModels, generateImageForSD, closeRequester } from '../api/client.js';
 import { generateRequestBody } from '../utils/utils.js';
 import logger from '../utils/logger.js';
 import config from '../config/config.js';
@@ -98,6 +98,76 @@ app.get('/v1/models', async (req, res) => {
   }
 });
 
+// ==================== Stable Diffusion API ====================
+
+app.get('/sdapi/v1/sd-models', async (req, res) => {
+  try {
+    const models = await getAvailableModels();
+    const imageModels = models.data
+      .filter(m => m.id.includes('-image'))
+      .map(m => ({
+        title: m.id,
+        model_name: m.id,
+        hash: null,
+        sha256: null,
+        filename: m.id,
+        config: null
+      }));
+    res.json(imageModels);
+  } catch (error) {
+    logger.error('获取SD模型列表失败:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/sdapi/v1/txt2img', async (req, res) => {
+  const { prompt, negative_prompt, steps, cfg_scale, width, height, seed, sampler_name } = req.body;
+  
+  try {
+    if (!prompt) {
+      return res.status(400).json({ error: 'prompt is required' });
+    }
+    
+    const token = await tokenManager.getToken();
+    if (!token) {
+      throw new Error('没有可用的token');
+    }
+    
+    const model = 'gemini-3-pro-image';
+    const messages = [{ role: 'user', content: prompt }];
+    const requestBody = generateRequestBody(messages, model, {}, null, token);
+    
+    requestBody.request.generationConfig = { candidateCount: 1 };
+    requestBody.requestType = 'image_gen';
+    delete requestBody.request.systemInstruction;
+    delete requestBody.request.tools;
+    delete requestBody.request.toolConfig;
+    
+    const images = await generateImageForSD(requestBody, token);
+    
+    if (images.length === 0) {
+      throw new Error('未生成图片');
+    }
+    
+    res.json({
+      images,
+      parameters: { prompt, negative_prompt, steps, cfg_scale, width, height, seed, sampler_name },
+      info: JSON.stringify({ prompt, seed: seed || -1 })
+    });
+  } catch (error) {
+    logger.error('SD生图失败:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/sdapi/v1/options', (req, res) => {
+  res.json({
+    sd_model_checkpoint: 'gemini-3-pro-image',
+    sd_vae: 'auto',
+    CLIP_stop_at_last_layers: 1
+  });
+});
+
 
 
 app.post('/v1/chat/completions', async (req, res) => {
@@ -133,6 +203,7 @@ app.post('/v1/chat/completions', async (req, res) => {
       setStreamHeaders(res);
       
       if (isImageModel) {
+        //console.log(JSON.stringify(requestBody,null,2));
         const { content, usage } = await generateAssistantResponseNoStream(requestBody, token);
         writeStreamData(res, createStreamChunk(id, created, model, { content }));
         writeStreamData(res, { ...createStreamChunk(id, created, model, {}, 'stop'), usage });
