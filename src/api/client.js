@@ -76,6 +76,9 @@ async function handleApiError(error, token) {
   }
   
   if (status === 403) {
+    if (JSON.stringify(errorBody).includes("The caller does not")){
+      throw new Error(`超出模型最大上下文。错误详情: ${errorBody}`);
+    }
     tokenManager.disableCurrentToken(token);
     throw new Error(`该账号没有使用权限，已自动禁用。错误详情: ${errorBody}`);
   }
