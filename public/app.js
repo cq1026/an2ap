@@ -711,7 +711,7 @@ async function showQuotaModal(refreshToken, projectId = 'N/A') {
                     </button>
                 </div>
                 <div id="quotaContent">
-                    <div class="quota-loading">加载中...</div>
+                    <!-- 静默加载：初始为空白 -->
                 </div>
             </div>
         </div>
@@ -739,10 +739,7 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
         if (refreshIcon) refreshIcon.classList.add('animate-spin');
     }
 
-    // 只在初次加载或内容为空时显示"加载中..."，刷新时保持现有内容
-    if (!quotaContent.innerHTML || quotaContent.innerHTML.includes('quota-loading') || quotaContent.innerHTML.includes('quota-empty')) {
-        quotaContent.innerHTML = '<div class="quota-loading">加载中...</div>';
-    }
+    // 静默加载：不显示"加载中..."，只有刷新按钮转圈
 
     try {
         const url = `/admin/tokens/${encodeURIComponent(refreshToken)}/quotas${forceRefresh ? '?refresh=true' : ''}`;
