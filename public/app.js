@@ -739,7 +739,10 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
         if (refreshIcon) refreshIcon.classList.add('animate-spin');
     }
 
-    quotaContent.innerHTML = '<div class="quota-loading">加载中...</div>';
+    // 只在初次加载或内容为空时显示"加载中..."，刷新时保持现有内容
+    if (!quotaContent.innerHTML || quotaContent.innerHTML.includes('quota-loading') || quotaContent.innerHTML.includes('quota-empty')) {
+        quotaContent.innerHTML = '<div class="quota-loading">加载中...</div>';
+    }
 
     try {
         const url = `/admin/tokens/${encodeURIComponent(refreshToken)}/quotas${forceRefresh ? '?refresh=true' : ''}`;
