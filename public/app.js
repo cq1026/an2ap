@@ -767,6 +767,11 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
                 else grouped.other.push(item);
             });
 
+            // 对每个分组按模型名称排序，保持顺序稳定
+            grouped.claude.sort((a, b) => a.modelId.localeCompare(b.modelId));
+            grouped.gemini.sort((a, b) => a.modelId.localeCompare(b.modelId));
+            grouped.other.sort((a, b) => a.modelId.localeCompare(b.modelId));
+
             let html = '';
 
             // 渲染各组
