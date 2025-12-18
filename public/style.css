@@ -66,6 +66,9 @@
     --text-primary: var(--zinc-900);
     --text-secondary: var(--zinc-500);
     --border-color: var(--zinc-200);
+
+    /* 字体大小基准 (从上游合并) */
+    --font-size-base: 16px;
 }
 
 /* 深色模式变量 */
@@ -1780,4 +1783,266 @@ body {
     .content-page {
         overflow: visible;
     }
+}
+
+/* ===== 新功能样式 (从上游合并，适配Emerald主题) ===== */
+
+/* 字体大小控制 */
+.font-size-control {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+}
+.font-size-control input[type="range"] {
+    flex: 1;
+    min-height: auto;
+    height: 6px;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 3px;
+    background: var(--zinc-200);
+    outline: none;
+    -webkit-appearance: none;
+}
+.dark .font-size-control input[type="range"] {
+    background: var(--zinc-700);
+}
+.font-size-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--emerald-500);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.font-size-control input[type="range"]::-webkit-slider-thumb:hover {
+    background: var(--emerald-600);
+    transform: scale(1.1);
+}
+.font-size-control input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--emerald-500);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+}
+.font-size-control input[type="range"]::-moz-range-thumb:hover {
+    background: var(--emerald-600);
+    transform: scale(1.1);
+}
+.font-size-control input[type="number"] {
+    width: 60px;
+    text-align: center;
+    flex-shrink: 0;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    padding: var(--spacing-1) var(--spacing-2);
+    transition: border-color 0.2s;
+}
+.font-size-control input[type="number"]:focus {
+    outline: none;
+    border-color: var(--emerald-500);
+    box-shadow: 0 0 0 3px rgba(16,185,129,0.1);
+}
+
+/* 轮询策略状态显示 */
+.rotation-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: var(--spacing-3) var(--spacing-4);
+    background: var(--emerald-50);
+    border: 1px solid rgba(16,185,129,0.15);
+    border-radius: var(--radius-lg);
+    margin-top: var(--spacing-3);
+    font-size: 0.75rem;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.dark .rotation-status {
+    background: rgba(16,185,129,0.08);
+    border-color: rgba(16,185,129,0.2);
+}
+.rotation-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+#currentRotationInfo {
+    color: var(--emerald-600);
+    font-weight: 600;
+}
+.dark #currentRotationInfo {
+    color: var(--emerald-400);
+}
+
+/* 帮助提示 */
+.help-tip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--emerald-500);
+    color: white;
+    font-size: 0.65rem;
+    font-weight: 600;
+    cursor: help;
+    margin-left: var(--spacing-1);
+    position: relative;
+    transition: all 0.2s;
+}
+.help-tip:hover {
+    background: var(--emerald-600);
+    transform: scale(1.1);
+}
+.help-tip::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--zinc-900);
+    color: white;
+    padding: var(--spacing-3) var(--spacing-4);
+    border-radius: var(--radius-lg);
+    font-size: 0.75rem;
+    font-weight: 400;
+    white-space: pre-line;
+    min-width: 200px;
+    max-width: 300px;
+    text-align: left;
+    line-height: 1.4;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 1000;
+    box-shadow: var(--shadow-xl);
+}
+.help-tip:hover::before {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-4px);
+}
+.help-tip::after {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--zinc-900);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 1000;
+}
+.help-tip:hover::after {
+    opacity: 1;
+}
+.dark .help-tip::before {
+    background: var(--zinc-800);
+    border: 1px solid var(--zinc-700);
+}
+.dark .help-tip::after {
+    border-top-color: var(--zinc-800);
+}
+
+/* 开关样式 */
+.switch-row {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: var(--spacing-2);
+    background: var(--emerald-50);
+    padding: var(--spacing-3);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(16,185,129,0.15);
+    align-items: center;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+.dark .switch-row {
+    background: rgba(16,185,129,0.08);
+    border-color: rgba(16,185,129,0.2);
+}
+.switch-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-2);
+    background: var(--bg-card);
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-md);
+    flex: 1 1 auto;
+    min-width: 140px;
+    border: 1px solid var(--border-color);
+    transition: all 0.2s;
+    min-height: 36px;
+}
+.switch-group:hover {
+    border-color: var(--emerald-500);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+.dark .switch-group:hover {
+    box-shadow: 0 4px 12px rgba(16,185,129,0.15);
+}
+.switch-group label:first-child {
+    flex: 1;
+    margin-bottom: 0;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    min-height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--zinc-300);
+    transition: 0.3s;
+    border-radius: 24px;
+}
+.dark .slider {
+    background-color: var(--zinc-700);
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+.switch input:checked + .slider {
+    background-color: var(--emerald-500);
+}
+.switch input:focus + .slider {
+    box-shadow: 0 0 0 2px rgba(16,185,129,0.2);
+}
+.switch input:checked + .slider:before {
+    transform: translateX(20px);
 }
