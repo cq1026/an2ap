@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - AnII Gateway</title>
+    
+    <!-- Google Fonts: Inter (UI) & Noto Serif (Display) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['"Noto Serif"', 'serif'],
+                    },
+                    colors: {
+                        background: "#F9F8F6",
+                        foreground: "#2D2A26",
+                        primary: "#C06C4D",
+                        muted: "#E6E2DA",
+                        "muted-foreground": "#8A847C",
+                        border: "#E2DCD3",
+                    },
+                    animation: {
+                        'float': 'float 8s ease-in-out infinite',
+                        'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'fade-in-down': 'fadeInDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'line-grow': 'lineGrow 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                        'slide-in-right': 'slideInRight 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-15px)' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        fadeInDown: {
+                            '0%': { opacity: 0, transform: 'translateY(-20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        },
+                        lineGrow: {
+                            '0%': { transform: 'scaleX(0)', opacity: 0 },
+                            '100%': { transform: 'scaleX(1)', opacity: 1 },
+                        },
+                        slideInRight: {
+                            '0%': { opacity: 0, transform: 'translateX(-20px)' },
+                            '100%': { opacity: 1, transform: 'translateX(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Base styles */
+        body {
+            background-color: #F9F8F6;
+            color: #2D2A26;
+        }
+
+        /* Autofill fix for all browsers */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #F9F8F6 inset !important;
+            -webkit-text-fill-color: #2D2A26 !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
+        /* Firefox autofill */
+        input:-moz-autofill {
+            background-color: #F9F8F6 !important;
+            color: #2D2A26 !important;
+        }
+
+        /* Floating Label Logic */
+        .input-wrapper input:focus ~ label,
+        .input-wrapper input:not(:placeholder-shown) ~ label {
+            transform: translateY(-1.5rem) scale(0.85);
+            color: #C06C4D;
+        }
+        
+        .input-wrapper input:focus ~ .input-border {
+            transform: scaleX(1);
+            opacity: 1;
+        }
+        
+        .input-wrapper .input-border {
+            transform: scaleX(0);
+            transform-origin: center;
+            opacity: 0;
+        }
+
+        /* Mobile-optimized input sizes */
+        @media (max-width: 640px) {
+            .input-wrapper input {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+        }
+
+        /* Noise Texture */
+        .bg-noise {
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.06'/%3E%3C/svg%3E");
+        }
+        
+        /* === 新增内容：SVG 颜色循环动画 === 
+           总周期 30s (对应 SVG strokeAnim 10s * 3次)
+           steps(1) 确保颜色在每 10s 结束时瞬间切换，而不是渐变
+        */
+        @keyframes colorCycle {
+            0% { color: #2D2A26; }      /* 第一轮：原色 (深灰/黑) */
+            33.33% { color: #C06C4D; }  /* 第二轮：主色 (焦橙色) - 在10s处切换 */
+            66.66% { color: #3D6E70; }  /* 第三轮：新色 (复古青/Teal) - 在20s处切换 */
+        }
+
+        /* SVG Stroke Animation Config */
+        .svg-text {
+            /* 应用颜色循环，无限循环 */
+            animation: colorCycle 30s steps(1) infinite;
+        }
+
+        .svg-text text {
+            fill: transparent; 
+            stroke: currentColor; /* 关键：使用当前颜色，跟随父级 colorCycle 变化 */
+            stroke-width: 1.5px; 
+            stroke-dasharray: 600; 
+            stroke-dashoffset: 600; 
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            will-change: stroke-dashoffset, fill, color;
+        }
+
+        /* Cinematic Loop Animation (10s Cycle) */
+        @keyframes strokeAnim {
+            0% { stroke-dashoffset: 600; }
+            20% { stroke-dashoffset: 0; }
+            70% { stroke-dashoffset: 0; } 
+            90% { stroke-dashoffset: 600; } 
+            100% { stroke-dashoffset: 600; }
+        }
+
+        @keyframes fillAnim {
+            0%, 20% { fill: transparent; stroke-width: 1.5px; }
+            30% { fill: currentColor; stroke-width: 0px; } 
+            60% { fill: currentColor; stroke-width: 0px; } 
+            70% { fill: transparent; stroke-width: 1.5px; } 
+            100% { fill: transparent; stroke-width: 1.5px; }
+        }
+
+        .char-loop {
+            animation: strokeAnim 10s cubic-bezier(0.45, 0, 0.55, 1) infinite, 
+                       fillAnim 10s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+        }
+
+        /* No Staggering - Unified Reveal */
+        .char-a, .char-n, .char-i1, .char-i2 {
+            animation-delay: 0s;
+        }
+
+        /* Mobile Logo Animation - Simplified */
+        .mobile-logo-text {
+            fill: transparent; 
+            stroke: currentColor; 
+            stroke-width: 2px; 
+            stroke-dasharray: 400; 
+            stroke-dashoffset: 400; 
+            animation: mobileStroke 2s cubic-bezier(0.45, 0, 0.55, 1) forwards,
+                       mobileFill 2s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+        }
+
+        @keyframes mobileStroke {
+            to { stroke-dashoffset: 0; }
+        }
+
+        @keyframes mobileFill {
+            0%, 50% { fill: transparent; }
+            100% { fill: currentColor; stroke-width: 0px; }
+        }
+        
+        /* Utility Delays */
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+        .delay-500 { animation-delay: 500ms; }
+        .delay-1000 { animation-delay: 1000ms; }
+        .delay-1200 { animation-delay: 1200ms; }
+        .delay-1400 { animation-delay: 1400ms; }
+        .delay-1600 { animation-delay: 1600ms; }
+        .delay-1800 { animation-delay: 1800ms; }
+
+        /* Toast animations */
+        .toast-enter-active,
+        .toast-leave-active {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toast-enter-from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+
+        .toast-leave-to {
+            opacity: 0;
+            transform: translateX(-20px) scale(0.95);
+        }
+
+        /* Performance optimization */
+        .input-border {
+            will-change: transform;
+        }
+
+        /* Safe area for mobile devices (iPhone notch, etc.) */
+        @supports (padding: max(0px)) {
+            body {
+                padding-left: max(0px, env(safe-area-inset-left));
+                padding-right: max(0px, env(safe-area-inset-right));
+            }
+        }
+
+    </style>
+</head>
+<body class="antialiased font-sans selection:bg-primary/20 overflow-hidden h-screen w-screen">
+
+    <div id="app" class="w-full h-full lg:grid lg:grid-cols-2">
+        
+        <!-- Left: Art Direction (Desktop Only) -->
+        <div class="relative hidden lg:flex flex-col justify-center items-center p-16 bg-[#EFECE6] overflow-hidden">
+            <!-- Texture -->
+            <div class="absolute inset-0 bg-noise opacity-50 pointer-events-none z-0"></div>
+            
+            <!-- Subtle Gradient -->
+            <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/20 to-transparent pointer-events-none"></div>
+
+            <!-- Content -->
+            <div class="relative z-10 max-w-lg w-full">
+                
+                <!-- Main Title: AnII (SVG Loop) -->
+                <div class="mb-8 select-none relative h-32 w-full">
+                    <!-- 
+                         注意：移除了 text-foreground 类，因为颜色现在完全由 CSS 动画 colorCycle 控制 
+                         class 中保留了 font-serif font-bold 等排版样式
+                    -->
+                    <svg viewBox="0 0 240 120" class="w-full h-full svg-text overflow-visible font-serif font-bold tracking-tight">
+                        <text x="10" y="90" font-size="100" class="char-loop char-a">A</text>
+                        <text x="85" y="90" font-size="100" class="char-loop char-n">n</text>
+                        <text x="155" y="90" font-size="100" class="char-loop char-i1">I</text>
+                        <text x="190" y="90" font-size="100" class="char-loop char-i2">I</text>
+                    </svg>
+                </div>
+
+                <!-- Divider -->
+                <div class="h-px w-16 bg-foreground/20 mb-10 animate-line-grow origin-left opacity-0 delay-1000"></div>
+
+                <!-- Subtitle: High-End Typography -->
+                <div class="space-y-6">
+                    <!-- Primary Headline -->
+                    <h2 class="font-serif text-3xl text-foreground/90 leading-tight tracking-wide">
+                        <span class="inline-block opacity-0 animate-fade-in-up delay-[1200ms]">API Proxy Service</span>
+                    </h2>
+                    
+                    <!-- Accent Text: Orange + Italic + Serif (低调的高端感) -->
+                    <p class="text-3xl font-serif italic text-primary opacity-0 animate-fade-in-up delay-[1400ms]">
+                        Seamless Connectivity.
+                    </p>
+                    
+                    <!-- Technical Specs -->
+                    <div class="flex items-center gap-4 mt-6 text-xs text-muted-foreground font-sans tracking-[0.15em] uppercase opacity-0 animate-fade-in-up delay-[1600ms]">
+                        <span>Secure</span>
+                        <span class="w-1 h-1 rounded-full bg-foreground/20"></span>
+                        <span>Scalable</span>
+                        <span class="w-1 h-1 rounded-full bg-foreground/20"></span>
+                        <span>Global</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Copyright -->
+            <div class="absolute bottom-10 text-[10px] text-muted-foreground/60 tracking-[0.2em] uppercase opacity-0 animate-fade-in-up delay-1800">
+                © 2025 AnII Project
+            </div>
+        </div>
+
+        <!-- Right: Login Form -->
+        <div class="flex flex-col items-center justify-center min-h-screen p-6 sm:p-8 bg-[#F9F8F6] relative">
+            
+            <!-- Mobile Brand Header -->
+            <div class="lg:hidden w-full max-w-[340px] mb-8 sm:mb-12 opacity-0 animate-fade-in-down delay-100">
+                <div class="text-center">
+                    <!-- Mobile Logo SVG (Simplified Animation) -->
+                    <svg viewBox="0 0 120 50" class="w-32 h-auto mx-auto mb-3 font-serif font-bold text-foreground">
+                        <text x="5" y="38" font-size="42" class="mobile-logo-text char-a">A</text>
+                        <text x="38" y="38" font-size="42" class="mobile-logo-text char-n" style="animation-delay: 0.1s">n</text>
+                        <text x="72" y="38" font-size="42" class="mobile-logo-text char-i1" style="animation-delay: 0.2s">I</text>
+                        <text x="88" y="38" font-size="42" class="mobile-logo-text char-i2" style="animation-delay: 0.3s">I</text>
+                    </svg>
+                    
+                    <!-- Mobile Tagline -->
+                    <p class="text-xs text-muted-foreground font-sans tracking-wide opacity-0 animate-fade-in-up delay-500">
+                        API Proxy Service
+                    </p>
+                    
+                    <!-- Mobile Divider -->
+                    <div class="h-px w-12 bg-foreground/10 mx-auto mt-4 opacity-0 animate-line-grow delay-[600ms]"></div>
+                </div>
+            </div>
+            
+            <!-- Login Form Container -->
+            <div class="w-full max-w-[340px] opacity-0 animate-fade-in-up delay-300 lg:delay-200">
+                
+                <!-- Header -->
+                <div class="mb-8 sm:mb-12 text-center lg:text-left">
+                    <h1 class="text-xl sm:text-2xl font-serif font-medium text-foreground tracking-tight">Welcome back</h1>
+                    <p class="text-xs sm:text-sm text-muted-foreground mt-1 lg:hidden">Sign in to continue</p>
+                </div>
+
+                <form @submit.prevent="handleLogin" class="space-y-8 sm:space-y-10">
+                    
+                    <!-- Username Input -->
+                    <div class="input-wrapper relative">
+                        <input 
+                            id="username"
+                            v-model="form.email"
+                            type="text" 
+                            class="peer w-full h-10 sm:h-11 border-b border-border bg-transparent text-foreground placeholder-transparent focus:outline-none focus:border-border/0 transition-colors pt-1 font-sans touch-manipulation"
+                            placeholder="Username"
+                            :disabled="isLoading"
+                            required
+                            autocomplete="username"
+                        >
+                        <label 
+                            for="username" 
+                            class="absolute left-0 top-1 text-muted-foreground text-sm font-medium transition-all duration-300 origin-[0] cursor-text tracking-wide pointer-events-none"
+                        >
+                            Username
+                        </label>
+                        <div class="input-border absolute bottom-0 left-0 w-full h-[1.5px] bg-primary transition-all duration-500 ease-out"></div>
+                    </div>
+
+                    <!-- Password Input -->
+                    <div class="input-wrapper relative">
+                        <input 
+                            id="password"
+                            v-model="form.password"
+                            :type="showPassword ? 'text' : 'password'"
+                            class="peer w-full h-10 sm:h-11 border-b border-border bg-transparent text-foreground placeholder-transparent focus:outline-none focus:border-border/0 transition-colors pt-1 pr-10 font-sans touch-manipulation"
+                            placeholder="Password"
+                            :disabled="isLoading"
+                            required
+                            autocomplete="current-password"
+                        >
+                        <label 
+                            for="password" 
+                            class="absolute left-0 top-1 text-muted-foreground text-sm font-medium transition-all duration-300 origin-[0] cursor-text tracking-wide pointer-events-none"
+                        >
+                            Password
+                        </label>
+                        <div class="input-border absolute bottom-0 left-0 w-full h-[1.5px] bg-primary transition-all duration-500 ease-out"></div>
+                        
+                        <!-- Toggle Password (Larger touch target for mobile) -->
+                        <button 
+                            type="button"
+                            @click="showPassword = !showPassword"
+                            class="absolute right-0 top-1 p-2 -mr-2 text-muted-foreground/60 hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 rounded touch-manipulation"
+                            aria-label="Toggle password visibility"
+                        >
+                            <i :data-lucide="showPassword ? 'eye-off' : 'eye'" class="h-4 w-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- Sign In Button -->
+                    <button 
+                        type="submit" 
+                        :disabled="isLoading"
+                        class="w-full h-11 sm:h-12 mt-6 rounded bg-foreground text-[#F9F8F6] font-medium text-sm tracking-wide 
+                               transition-all duration-300 ease-out
+                               hover:scale-[1.01] hover:shadow-lg hover:bg-foreground/95
+                               active:scale-[0.995] active:shadow-sm
+                               disabled:opacity-70 disabled:hover:scale-100 disabled:hover:shadow-none 
+                               flex items-center justify-center gap-2 transform origin-center
+                               touch-manipulation focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2"
+                    >
+                        <i v-if="isLoading" data-lucide="loader-2" class="animate-spin h-3.5 w-3.5"></i>
+                        <span>{{ isLoading ? 'Authenticating...' : 'Sign in' }}</span>
+                    </button>
+
+                </form>
+
+                <!-- Mobile Footer Info -->
+                <div class="lg:hidden mt-8 sm:mt-12 text-center opacity-0 animate-fade-in-up delay-[800ms]">
+                    <div class="flex items-center justify-center gap-3 text-[10px] text-muted-foreground/60 tracking-[0.15em] uppercase">
+                        <span>Secure</span>
+                        <span class="w-0.5 h-0.5 rounded-full bg-foreground/20"></span>
+                        <span>Scalable</span>
+                        <span class="w-0.5 h-0.5 rounded-full bg-foreground/20"></span>
+                        <span>Global</span>
+                    </div>
+                    <p class="mt-4 text-[9px] text-muted-foreground/40 tracking-[0.2em] uppercase">
+                        © 2025 AnII Project
+                    </p>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Toast Notification (Mobile-optimized positioning) -->
+        <transition-group 
+            tag="div" 
+            class="fixed top-4 sm:top-6 left-4 right-4 sm:left-auto sm:right-6 z-50 flex flex-col gap-2 pointer-events-none"
+            name="toast"
+        >
+            <div 
+                v-for="toast in toasts" 
+                :key="toast.id"
+                class="pointer-events-auto w-full sm:min-w-[280px] sm:w-auto p-3.5 sm:p-4 bg-white/95 shadow-[0_4px_20px_rgb(0,0,0,0.08)] border border-border/60 rounded-lg flex items-start gap-3 backdrop-blur-sm"
+            >
+                <div :class="['w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0', toast.variant === 'destructive' ? 'bg-red-500' : 'bg-primary']"></div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-foreground font-serif truncate">{{ toast.title }}</p>
+                    <p v-if="toast.message" class="text-xs text-muted-foreground mt-0.5 font-sans line-clamp-2">{{ toast.message }}</p>
+                </div>
+            </div>
+        </transition-group>
+
+    </div>
+
+    <!-- Vue 3 - 必须在应用代码之前加载 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <!-- Application Script - 必须在 Vue 加载后执行 -->
+    <script>
+        // 确保 Vue 已加载
+        if (typeof Vue === 'undefined') {
+            console.error('Vue is not loaded! Please check your internet connection.');
+        } else {
+            const { createApp, ref, onMounted, watch } = Vue;
+
+            createApp({
+                setup() {
+                    const form = ref({ email: '', password: '' });
+                    const isLoading = ref(false);
+                    const showPassword = ref(false);
+                    const toasts = ref([]);
+
+                    const addToast = (title, message, variant = 'default') => {
+                        const id = Date.now();
+                        toasts.value.push({ id, title, message, variant });
+                        setTimeout(() => toasts.value = toasts.value.filter(t => t.id !== id), 4000);
+                    };
+
+                    const handleLogin = async () => {
+                        if (!form.value.email || !form.value.password) return;
+                        isLoading.value = true;
+                        
+                        // Refresh icons before loading state
+                        setTimeout(() => {
+                            if (typeof lucide !== 'undefined') {
+                                lucide.createIcons();
+                            }
+                        }, 0);
+                        
+                        // Simulate API request
+                        setTimeout(() => {
+                            isLoading.value = false;
+                            if (form.value.email) {
+                                addToast('Access Granted', 'Redirecting to dashboard...');
+                                // 这里可以添加实际的跳转逻辑
+                                // window.location.href = '/dashboard';
+                            } else {
+                                addToast('Access Denied', 'Invalid credentials provided.', 'destructive');
+                            }
+                            // Refresh icons after state change
+                            setTimeout(() => {
+                                if (typeof lucide !== 'undefined') {
+                                    lucide.createIcons();
+                                }
+                            }, 0);
+                        }, 1200);
+                    };
+
+                    // Watch for loading state changes to update icons
+                    watch(isLoading, () => {
+                        setTimeout(() => {
+                            if (typeof lucide !== 'undefined') {
+                                lucide.createIcons();
+                            }
+                        }, 0);
+                    });
+
+                    onMounted(() => {
+                        // Initialize Lucide icons
+                        if (typeof lucide !== 'undefined') {
+                            lucide.createIcons();
+                        }
+                        
+                        // Prevent zoom on input focus for iOS
+                        const inputs = document.querySelectorAll('input');
+                        inputs.forEach(input => {
+                            input.addEventListener('touchstart', function() {
+                                // Helps with touch responsiveness
+                            }, { passive: true });
+                        });
+                    });
+
+                    return {
+                        form,
+                        isLoading,
+                        showPassword,
+                        handleLogin,
+                        toasts
+                    };
+                }
+            }).mount('#app');
+        }
+    </script>
+</body>
+</html>
