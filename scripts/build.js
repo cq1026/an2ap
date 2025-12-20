@@ -97,9 +97,11 @@ const pkgJson = {
   bin: 'server.cjs',
   pkg: {
     assets: [
+      toSlash(path.join(rootDir, 'public', '**/*')),
       toSlash(path.join(rootDir, 'public', '*.html')),
-      toSlash(path.join(rootDir, 'public', '*.js')),
       toSlash(path.join(rootDir, 'public', '*.css')),
+      toSlash(path.join(rootDir, 'public', 'js', '*.js')),
+      toSlash(path.join(rootDir, 'public', 'assets', '*')),
       toSlash(path.join(rootDir, 'src', 'bin', '*'))
     ]
   }
@@ -185,24 +187,36 @@ try {
   // 复制 public 目录（排除 images）
   const publicSrcDir = path.join(rootDir, 'public');
   const publicDestDir = path.join(distDir, 'public');
+  console.log(`  Source: ${publicSrcDir}`);
+  console.log(`  Dest: ${publicDestDir}`);
+  console.log(`  Source exists: ${fs.existsSync(publicSrcDir)}`);
+  
   if (fs.existsSync(publicSrcDir)) {
-    if (fs.existsSync(publicDestDir)) {
-      fs.rmSync(publicDestDir, { recursive: true, force: true });
-    }
-    fs.mkdirSync(publicDestDir, { recursive: true });
-    const publicFiles = fs.readdirSync(publicSrcDir);
-    for (const file of publicFiles) {
-      if (file === 'images') continue; // 跳过 images 目录
-      const srcPath = path.join(publicSrcDir, file);
-      const destPath = path.join(publicDestDir, file);
-      const stat = fs.statSync(srcPath);
-      if (stat.isFile()) {
-        fs.copyFileSync(srcPath, destPath);
-      } else if (stat.isDirectory()) {
-        fs.cpSync(srcPath, destPath, { recursive: true });
+    try {
+      if (fs.existsSync(publicDestDir)) {
+        console.log('  Removing existing public directory...');
+        fs.rmSync(publicDestDir, { recursive: true, force: true });
       }
+      // 使用系统命令复制目录（更可靠）
+      console.log('  Copying public directory...');
+      if (process.platform === 'win32') {
+        execSync(`xcopy /E /I /Y /Q "${publicSrcDir}" "${publicDestDir}"`, { stdio: 'pipe', shell: true });
+      } else {
+        fs.mkdirSync(publicDestDir, { recursive: true });
+        execSync(`cp -r "${publicSrcDir}"/* "${publicDestDir}/"`, { stdio: 'pipe', shell: true });
+      }
+      // 删除 images 目录（运行时生成，不需要打包）
+      const imagesDir = path.join(publicDestDir, 'images');
+      if (fs.existsSync(imagesDir)) {
+        fs.rmSync(imagesDir, { recursive: true, force: true });
+      }
+      console.log('  ✓ Copied public directory');
+    } catch (err) {
+      console.error('  ❌ Failed to copy public directory:', err.message);
+      throw err;
     }
-    console.log('  ✓ Copied public directory');
+  } else {
+    console.error('  ❌ Source public directory not found!');
   }
   
   // 复制 bin 目录（只复制对应平台的文件）
@@ -245,15 +259,12 @@ try {
     }
   }
   
-  // 复制配置文件模板
-  const configFiles = ['.env.example', 'config.json'];
-  for (const file of configFiles) {
-    const srcPath = path.join(rootDir, file);
-    const destPath = path.join(distDir, file);
-    if (fs.existsSync(srcPath)) {
-      fs.copyFileSync(srcPath, destPath);
-      console.log(`  ✓ Copied ${file}`);
-    }
+  // 复制配置文件模板（只复制 config.json）
+  const configSrcPath = path.join(rootDir, 'config.json');
+  const configDestPath = path.join(distDir, 'config.json');
+  if (fs.existsSync(configSrcPath)) {
+    fs.copyFileSync(configSrcPath, configDestPath);
+    console.log('  ✓ Copied config.json');
   }
   
   console.log('');
@@ -261,8 +272,8 @@ try {
   console.log('');
   console.log('📋 Usage:');
   console.log('  1. Copy the dist folder to your target machine');
-  console.log('  2. Rename .env.example to .env and configure it');
-  console.log('  3. Run the executable');
+  console.log('  2. Run the executable (will auto-generate random credentials if not configured)');
+  console.log('  3. Optionally create .env file to customize settings');
   console.log('');
   
 } catch (error) {

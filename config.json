@@ -4,10 +4,10 @@
     "host": "0.0.0.0",
     "maxRequestSize": "500mb",
     "heartbeatInterval": 15000,
-    "memoryThreshold": 25
+    "memoryThreshold": 50
   },
   "rotation": {
-    "strategy": "round_robin",
+    "strategy": "request_count",
     "requestCount": 50
   },
   "api": {
@@ -32,6 +32,7 @@
     "retryTimes": 3,
     "skipProjectIdFetch": false,
     "useNativeAxios": false,
-    "useContextSystemPrompt": false
+    "useContextSystemPrompt": true,
+    "passSignatureToClient": false
   }
 }

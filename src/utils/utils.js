@@ -1,241 +1,106 @@
+// 通用工具函数
 import config from '../config/config.js';
-import tokenManager from '../auth/token_manager.js';
-import { generateRequestId } from './idGenerator.js';
 import os from 'os';
-import { getReasoningSignature, getToolSignature } from './thoughtSignatureCache.js';
-import { setToolNameMapping } from './toolNameCache.js';
+import { REASONING_EFFORT_MAP, DEFAULT_STOP_SEQUENCES } from '../constants/index.js';
+import { toGenerationConfig } from './parameterNormalizer.js';
 
-// 思维链签名常量
-// Claude 模型签名
-const CLAUDE_THOUGHT_SIGNATURE = 'RXFRRENrZ0lDaEFDR0FJcVFKV1Bvcy9GV20wSmtMV2FmWkFEbGF1ZTZzQTdRcFlTc1NvbklmemtSNFo4c1dqeitIRHBOYW9hS2NYTE1TeTF3bjh2T1RHdE1KVjVuYUNQclZ5cm9DMFNETHk4M0hOSWsrTG1aRUhNZ3hvTTl0ZEpXUDl6UUMzOExxc2ZJakI0UkkxWE1mdWJ1VDQrZnY0Znp0VEoyTlhtMjZKL2daYi9HL1gwcmR4b2x0VE54empLemtLcEp0ZXRia2plb3NBcWlRSWlXUHloMGhVVTk1dHNha1dyNDVWNUo3MTJjZDNxdHQ5Z0dkbjdFaFk4dUllUC9CcThVY2VZZC9YbFpYbDc2bHpEbmdzL2lDZXlNY3NuZXdQMjZBTDRaQzJReXdibVQzbXlSZmpld3ZSaUxxOWR1TVNidHIxYXRtYTJ0U1JIRjI0Z0JwUnpadE1RTmoyMjR4bTZVNUdRNXlOSWVzUXNFNmJzRGNSV0RTMGFVOEZERExybmhVQWZQT2JYMG5lTGR1QnU1VGZOWW9NZGlRbTgyUHVqVE1xaTlmN0t2QmJEUUdCeXdyVXR2eUNnTEFHNHNqeWluZDRCOEg3N2ZJamt5blI3Q3ZpQzlIOTVxSENVTCt3K3JzMmsvV0sxNlVsbGlTK0pET3UxWXpPMWRPOUp3V3hEMHd5ZVU0a0Y5MjIxaUE5Z2lUd2djZXhSU2c4TWJVMm1NSjJlaGdlY3g0YjJ3QloxR0FFPQ==';
-// Gemini 思维链签名
+// ==================== 签名常量 ====================
+const CLAUDE_THOUGHT_SIGNATURE = 'RXNZRENrZ0lDaEFDR0FJcVFMZzVPTmZsd1ZHNmZKK3labDJ0TkNlRzc5QUpzUHV2OW9UZG1yc0JUUGNsUjFBQWhKNWlYcXhlU0dTaEtxeWJ1NUdaM2YvMXByaHJCSnk3OEhsWkxOd1NEREI5Mi8zQXFlYkUvY3RISEJvTXlGVHNzdzRJZXkxUTFkUURJakE3R3AwSXJQeW0xdWxLMVBXcFhuRElPdmJFRFd4LzV2cUZaQTg2NWU1SkM3QnY2dkxwZE43M2dLYkljaThobGR3cXF3S1VMbHE5b3NMdjc3QnNhZm5mbDhlbUd5NmJ6WVRpUnRWcXA0MDJabmZ2Tnl3T2hJd1BBV0l1SUNTdjFTemswZlNmemR0Z2R5eGgxaUJOZHhHNXVhZWhKdWhlUUwza3RDZWVxa2dMNFE0ZjRKWkFnR3pKOHNvaStjZ1pqRXJHT1lyNjJkdkxnUUVoT1E5MjN6bEUwRFd4aXdPU1JOK3VSRWdHZ0FKVkhZcjBKVzhrVTZvaEVaYk1IVkE4aG14ZElGMm9YK1ZxRnFUSGFDZWZEYWNQNTJVOW94VmJ0cFhrNnJUanQ2ZHpadEFMWThXQWs5RFI3bTJTbGova2VraXFzVVBRbFdIaFNUN3diZGpuVkYvdUVoODRWbXQ5WjdtaThtR2JEcTdaTHVOalF0T3hHMVpXbXJmeUpCMExwa0R1SnZDV01qZ3BqTHdsU0R4SUpmeEFoT2JzQlVpRzdLTDYwcUluanZaK1VTcXdjZGhmN0U3ZjgrN0l2ZXczRC9DZUYvdlptQ0JqU2JTcUdYYmFIQmdC';
 const GEMINI_THOUGHT_SIGNATURE = 'EqAHCp0HAXLI2nygRbdzD4Vgzxxi7tbM87zIRkNgPLqTj+Jxv9mY8Q0G87DzbTtvsIFhWB0RZMoEK6ntm5GmUe6ADtxHk4zgHUs/FKqTu8tzUdPRDrKn3KCAtFW4LJqijZoFxNKMyQRmlgPUX4tGYE7pllD77UK6SjCwKhKZoSVZLMiPXP9YFktbida1Q5upXMrzG1t8abPmpFo983T/rgWlNqJp+Fb+bsoH0zuSpmU4cPKO3LIGsxBhvRhM/xydahZD+VpEX7TEJAN58z1RomFyx9u0IR7ukwZr2UyoNA+uj8OChUDFupQsVwbm3XE1UAt22BGvfYIyyZ42fxgOgsFFY+AZ72AOufcmZb/8vIw3uEUgxHczdl+NGLuS4Hsy/AAntdcH9sojSMF3qTf+ZK1FMav23SPxUBtU5T9HCEkKqQWRnMsVGYV1pupFisWo85hRLDTUipxVy9ug1hN8JBYBNmGLf8KtWLhVp7Z11PIAZj3C6HzoVyiVeuiorwNrn0ZaaXNe+y5LHuDF0DNZhrIfnXByq6grLLSAv4fTLeCJvfGzTWWyZDMbVXNx1HgumKq8calP9wv33t0hfEaOlcmfGIyh1J/N+rOGR0WXcuZZP5/VsFR44S2ncpwTPT+MmR0PsjocDenRY5m/X4EXbGGkZ+cfPnWoA64bn3eLeJTwxl9W1ZbmYS6kjpRGUMxExgRNOzWoGISddHCLcQvN7o50K8SF5k97rxiS5q4rqDmqgRPXzQTQnZyoL3dCxScX9cvLSjNCZDcotonDBAWHfkXZ0/EmFiONQcLJdANtAjwoA44Mbn50gubrTsNd7d0Rm/hbNEh/ZceUalV5MMcl6tJtahCJoybQMsnjWuBXl7cXiKmqAvxTDxIaBgQBYAo4FrbV4zQv35zlol+O3YiyjJn/U0oBeO5pEcH1d0vnLgYP71jZVY2FjWRKnDR9aw4JhiuqAa+i0tupkBy+H4/SVwHADFQq6wcsL8qvXlwktJL9MIAoaXDkIssw6gKE9EuGd7bSO9f+sA8CZ0I8LfJ3jcHUsE/3qd4pFrn5RaET56+1p8ZHZDDUQ0p1okApUCCYsC2WuL6O9P4fcg3yitAA/AfUUNjHKANE+ANneQ0efMG7fx9bvI+iLbXgPupApoov24JRkmhHsrJiu9bp+G/pImd2PNv7ArunJ6upl0VAUWtRyLWyGfdl6etGuY8vVJ7JdWEQ8aWzRK3g6e+8YmDtP5DAfw==';
-// 工具调用思维链签名
-const TOOL_THOUGHT_SIGNATURE = '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';
-// 兜底签名（非 Claude/Gemini 时）
-const DEFAULT_THOUGHT_SIGNATURE = CLAUDE_THOUGHT_SIGNATURE;
+const CLAUDE_TOOL_SIGNATURE = 'RXVNQkNrZ0lDaEFDR0FJcVFLZGsvMnlyR0VTbmNKMXEyTFIrcWwyY2ozeHhoZHRPb0VOYWJ2VjZMSnE2MlBhcEQrUWdIM3ZWeHBBUG9rbGN1aXhEbXprZTcvcGlkbWRDQWs5MWcrTVNERnRhbWJFOU1vZWZGc1pWSGhvTUxsMXVLUzRoT3BIaWwyeXBJakNYa05EVElMWS9talprdUxvRjFtMmw5dnkrbENhSDNNM3BYNTM0K1lRZ0NaWTQvSUNmOXo4SkhZVzU2Sm1WcTZBcVNRUURBRGVMV1BQRXk1Q0JsS0dCZXlNdHp2NGRJQVlGbDFSMDBXNGhqNHNiSWNKeGY0UGZVQTBIeE1mZjJEYU5BRXdrWUJ4MmNzRFMrZGM1N1hnUlVNblpkZ0hTVHVNaGdod1lBUT09';
+const GEMINI_TOOL_SIGNATURE = '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';
 
-function getThoughtSignatureForModel(actualModelName) {
-  if (!actualModelName) return DEFAULT_THOUGHT_SIGNATURE;
+export function getThoughtSignatureForModel(actualModelName) {
+  if (!actualModelName) return CLAUDE_THOUGHT_SIGNATURE;
   const lower = actualModelName.toLowerCase();
   if (lower.includes('claude')) return CLAUDE_THOUGHT_SIGNATURE;
   if (lower.includes('gemini')) return GEMINI_THOUGHT_SIGNATURE;
-  return DEFAULT_THOUGHT_SIGNATURE;
+  return CLAUDE_THOUGHT_SIGNATURE;
 }
 
-function extractImagesFromContent(content) {
-  const result = { text: '', images: [] };
-
-  // 如果content是字符串，直接返回
-  if (typeof content === 'string') {
-    result.text = content;
-    return result;
-  }
-
-  // 如果content是数组（multimodal格式）
-  if (Array.isArray(content)) {
-    for (const item of content) {
-      if (item.type === 'text') {
-        result.text += item.text;
-      } else if (item.type === 'image_url') {
-        // 提取base64图片数据
-        const imageUrl = item.image_url?.url || '';
-
-        // 匹配 data:image/{format};base64,{data} 格式
-        const match = imageUrl.match(/^data:image\/(\w+);base64,(.+)$/);
-        if (match) {
-          const format = match[1]; // 例如 png, jpeg, jpg
-          const base64Data = match[2];
-          result.images.push({
-            inlineData: {
-              mimeType: `image/${format}`,
-              data: base64Data
-            }
-          })
-        }
-      }
-    }
-  }
-
-  return result;
+export function getToolSignatureForModel(actualModelName) {
+  if (!actualModelName) return CLAUDE_TOOL_SIGNATURE;
+  const lower = actualModelName.toLowerCase();
+  if (lower.includes('claude')) return CLAUDE_TOOL_SIGNATURE;
+  if (lower.includes('gemini')) return GEMINI_TOOL_SIGNATURE;
+  return CLAUDE_TOOL_SIGNATURE;
 }
-function handleUserMessage(extracted, antigravityMessages){
-  antigravityMessages.push({
-    role: "user",
-    parts: [
-      {
-        text: extracted.text
-      },
-      ...extracted.images
-    ]
-  })
-}
-// 将工具名称规范为 Vertex 要求的格式：^[a-zA-Z0-9_-]{1,128}$
-function sanitizeToolName(name) {
-  if (!name || typeof name !== 'string') {
-    return 'tool';
-  }
-  // 替换非法字符为下划线
+
+// ==================== 工具名称规范化 ====================
+export function sanitizeToolName(name) {
+  if (!name || typeof name !== 'string') return 'tool';
   let cleaned = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-  // 去掉首尾多余下划线
   cleaned = cleaned.replace(/^_+|_+$/g, '');
-  if (!cleaned) {
-    cleaned = 'tool';
-  }
-  // 限制最大长度 128
-  if (cleaned.length > 128) {
-    cleaned = cleaned.slice(0, 128);
+  if (!cleaned) cleaned = 'tool';
+  if (cleaned.length > 128) cleaned = cleaned.slice(0, 128);
+  return cleaned;
+}
+
+// ==================== 参数清理 ====================
+const EXCLUDED_KEYS = new Set([
+  '$schema', 'additionalProperties', 'minLength', 'maxLength',
+  'minItems', 'maxItems', 'uniqueItems', 'exclusiveMaximum',
+  'exclusiveMinimum', 'const', 'anyOf', 'oneOf', 'allOf',
+  'any_of', 'one_of', 'all_of', 'multipleOf'
+]);
+
+export function cleanParameters(obj) {
+  if (!obj || typeof obj !== 'object') return obj;
+  const cleaned = Array.isArray(obj) ? [] : {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (EXCLUDED_KEYS.has(key)) continue;
+    cleaned[key] = (value && typeof value === 'object') ? cleanParameters(value) : value;
   }
   return cleaned;
 }
-function handleAssistantMessage(message, antigravityMessages, enableThinking, actualModelName, sessionId){
-  const lastMessage = antigravityMessages[antigravityMessages.length - 1];
-  const hasToolCalls = message.tool_calls && message.tool_calls.length > 0;
-  const hasContent = message.content && message.content.trim() !== '';
-  
-  const antigravityTools = hasToolCalls ? message.tool_calls.map(toolCall => {
-    const originalName = toolCall.function.name;
-    const safeName = sanitizeToolName(originalName);
 
-    const part = {
-      functionCall: {
-        id: toolCall.id,
-        name: safeName,
-        args: {
-          query: toolCall.function.arguments
-        }
-      }
-    };
-
-    // 记录原始工具名到安全名的映射（仅当确实发生了变化时）
-    if (sessionId && actualModelName && safeName !== originalName) {
-      setToolNameMapping(sessionId, actualModelName, safeName, originalName);
-    }
-
-    // 启用思考模型时，工具调用优先使用实时签名（如果上游带了），否则兜底用常量
-    if (enableThinking) {
-      const cachedToolSig = getToolSignature(sessionId, actualModelName);
-      part.thoughtSignature = toolCall.thoughtSignature || cachedToolSig || TOOL_THOUGHT_SIGNATURE;
-    }
-
-    return part;
-  }) : [];
-
-  if (lastMessage?.role === "model" && hasToolCalls && !hasContent){
-    lastMessage.parts.push(...antigravityTools)
-  }else{
-    const parts = [];
-
-    // 对于启用思考的模型，在历史 assistant 消息中补一个思考块 + 签名块
-    // 结构示例：
-    // {
-    //   "role": "model",
-    //   "parts": [
-    //     { "text": "␈", "thought": true },
-    //     { "text": "␈", "thoughtSignature": "..." },
-    //     { "text": "正常回复..." }
-    //   ]
-    // }
-    if (enableThinking) {
-      // 普通思维链签名：
-      // 1. 优先使用消息自身携带的 thoughtSignature
-      // 2. 其次使用缓存中的最新签名（同 session + model）
-      // 3. 最后按模型类型选择内置兜底签名
-      const cachedSig = getReasoningSignature(sessionId, actualModelName);
-      const thoughtSignature = message.thoughtSignature || cachedSig || getThoughtSignatureForModel(actualModelName);
-      // 默认思考内容不能是完全空字符串，否则上游会要求 thinking 字段
-      // 这里用一个不可见的退格符作为占位，实际展示时等价于“空思考块”
-      let reasoningText = '';
-      if (typeof message.reasoning_content === 'string' && message.reasoning_content.length > 0) {
-        reasoningText = message.reasoning_content;
-      } else {
-        reasoningText = ' '; // 退格符占位
-      }
-      parts.push({ text: reasoningText, thought: true });
-      // 思维链签名占位，避免上游校验缺少签名字段
-      parts.push({ text: ' ', thoughtSignature });
-    }
-
-    if (hasContent) parts.push({ text: message.content.trimEnd() });
-    parts.push(...antigravityTools);
-    
-    antigravityMessages.push({
-      role: "model",
-      parts
-    })
-  }
+// ==================== 模型映射 ====================
+export function modelMapping(modelName) {
+  if (modelName === 'claude-sonnet-4-5-thinking') return 'claude-sonnet-4-5';
+  if (modelName === 'claude-opus-4-5') return 'claude-opus-4-5-thinking';
+  if (modelName === 'gemini-2.5-flash-thinking') return 'gemini-2.5-flash';
+  return modelName;
 }
-function handleToolCall(message, antigravityMessages){
-  // 从之前的 model 消息中找到对应的 functionCall name
-  let functionName = '';
-  for (let i = antigravityMessages.length - 1; i >= 0; i--) {
-    if (antigravityMessages[i].role === 'model') {
-      const parts = antigravityMessages[i].parts;
-      for (const part of parts) {
-        if (part.functionCall && part.functionCall.id === message.tool_call_id) {
-          functionName = part.functionCall.name;
-          break;
-        }
-      }
-      if (functionName) break;
-    }
-  }
-  
-  const lastMessage = antigravityMessages[antigravityMessages.length - 1];
-  const functionResponse = {
-    functionResponse: {
-      id: message.tool_call_id,
-      name: functionName,
-      response: {
-        output: message.content
-      }
-    }
+
+export function isEnableThinking(modelName) {
+  return modelName.includes('-thinking') ||
+    modelName === 'gemini-2.5-pro' ||
+    modelName.startsWith('gemini-3-pro-') ||
+    modelName === 'rev19-uic3-1p' ||
+    modelName === 'gpt-oss-120b-medium';
+}
+
+// ==================== 生成配置 ====================
+export function generateGenerationConfig(parameters, enableThinking, actualModelName) {
+  // 使用 config.defaults 兜底
+  const normalizedParams = {
+    temperature: parameters.temperature ?? config.defaults.temperature,
+    top_p: parameters.top_p ?? config.defaults.top_p,
+    top_k: parameters.top_k ?? config.defaults.top_k,
+    max_tokens: parameters.max_tokens ?? config.defaults.max_tokens,
+    thinking_budget: parameters.thinking_budget,
   };
-  
-  // 如果上一条消息是 user 且包含 functionResponse，则合并
-  if (lastMessage?.role === "user" && lastMessage.parts.some(p => p.functionResponse)) {
-    lastMessage.parts.push(functionResponse);
-  } else {
-    antigravityMessages.push({
-      role: "user",
-      parts: [functionResponse]
-    });
+
+  // 处理 reasoning_effort 到 thinking_budget 的转换
+  if (normalizedParams.thinking_budget === undefined && parameters.reasoning_effort !== undefined) {
+    const defaultThinkingBudget = config.defaults.thinking_budget ?? 1024;
+    normalizedParams.thinking_budget = REASONING_EFFORT_MAP[parameters.reasoning_effort] ?? defaultThinkingBudget;
   }
-}
-function openaiMessageToAntigravity(openaiMessages, enableThinking, actualModelName, sessionId){
-  const antigravityMessages = [];
-  for (const message of openaiMessages) {
-    if (message.role === "user" || message.role === "system") {
-      // system 消息作为 user 处理（开头的 system 已在 generateRequestBody 中过滤）
-      const extracted = extractImagesFromContent(message.content);
-      handleUserMessage(extracted, antigravityMessages);
-    } else if (message.role === "assistant") {
-      handleAssistantMessage(message, antigravityMessages, enableThinking, actualModelName, sessionId);
-    } else if (message.role === "tool") {
-      handleToolCall(message, antigravityMessages);
-    }
-  }
+
+  // 使用统一的参数转换函数
+  const generationConfig = toGenerationConfig(normalizedParams, enableThinking, actualModelName);
   
-  return antigravityMessages;
+  // 添加 stopSequences
+  generationConfig.stopSequences = DEFAULT_STOP_SEQUENCES;
+  
+  return generationConfig;
 }
 
-/**
- * 从 OpenAI 消息中提取并合并 system 指令
- * 规则：
- * 1. SYSTEM_INSTRUCTION 作为基础 system，可为空
- * 2. 根据 useContextSystemPrompt 配置决定是否收集请求中的 system 消息
- * 3. 如果 useContextSystemPrompt=true，收集开头连续的 system 消息并合并
- * 4. 如果 useContextSystemPrompt=false，只使用基础 SYSTEM_INSTRUCTION
- */
-function extractSystemInstruction(openaiMessages) {
+// ==================== System 指令提取 ====================
+export function extractSystemInstruction(openaiMessages) {
   const baseSystem = config.systemInstruction || '';
-  
-  // 如果不使用上下文 system，只返回基础 system
-  if (!config.useContextSystemPrompt) {
-    return baseSystem;
-  }
-  
-  // 收集开头连续的 system 消息
+  if (!config.useContextSystemPrompt) return baseSystem;
+
   const systemTexts = [];
   for (const message of openaiMessages) {
     if (message.role === 'system') {
@@ -244,252 +109,50 @@ function extractSystemInstruction(openaiMessages) {
         : (Array.isArray(message.content)
             ? message.content.filter(item => item.type === 'text').map(item => item.text).join('')
             : '');
-      if (content.trim()) {
-        systemTexts.push(content.trim());
-      }
+      if (content.trim()) systemTexts.push(content.trim());
     } else {
-      // 遇到非 system 消息就停止收集
       break;
     }
   }
-  
-  // 合并：基础 system + 用户的 system 消息
+
   const parts = [];
-  if (baseSystem.trim()) {
-    parts.push(baseSystem.trim());
-  }
-  if (systemTexts.length > 0) {
-    parts.push(systemTexts.join('\n\n'));
-  }
-  
+  if (baseSystem.trim()) parts.push(baseSystem.trim());
+  if (systemTexts.length > 0) parts.push(systemTexts.join('\n\n'));
   return parts.join('\n\n');
 }
-// reasoning_effort 到 thinkingBudget 的映射
-const REASONING_EFFORT_MAP = {
-  'low': 1024,
-  'medium': 16000,
-  'high': 32000
-};
 
-function generateGenerationConfig(parameters, enableThinking, actualModelName){
-  // 获取思考预算：
-  // 1. 优先使用 thinking_budget（直接数值）
-  // 2. 其次使用 reasoning_effort（OpenAI 格式：low/medium/high）
-  // 3. 最后使用配置默认值或硬编码默认值
-  const defaultThinkingBudget = config.defaults.thinking_budget ?? 1024;
-  
-  let thinkingBudget = 0;
-  if (enableThinking) {
-    if (parameters.thinking_budget !== undefined) {
-      thinkingBudget = parameters.thinking_budget;
-    } else if (parameters.reasoning_effort !== undefined) {
-      thinkingBudget = REASONING_EFFORT_MAP[parameters.reasoning_effort] ?? defaultThinkingBudget;
-    } else {
-      thinkingBudget = defaultThinkingBudget;
-    }
-  }
-  
-  const generationConfig = {
-    topP: parameters.top_p ?? config.defaults.top_p,
-    topK: parameters.top_k ?? config.defaults.top_k,
-    temperature: parameters.temperature ?? config.defaults.temperature,
-    candidateCount: 1,
-    maxOutputTokens: parameters.max_tokens ?? config.defaults.max_tokens,
-    stopSequences: [
-      "<|user|>",
-      "<|bot|>",
-      "<|context_request|>",
-      "<|endoftext|>",
-      "<|end_of_turn|>"
-    ],
-    thinkingConfig: {
-      includeThoughts: enableThinking,
-      thinkingBudget: thinkingBudget
-    }
-  }
-  if (enableThinking && actualModelName.includes("claude")){
-    delete generationConfig.topP;
-  }
-  return generationConfig
-}
-// 不被 Google 工具参数 Schema 支持的字段，在这里统一过滤掉
-// 包括：
-// - JSON Schema 的元信息字段：$schema, additionalProperties
-// - 长度/数量约束：minLength, maxLength, minItems, maxItems, uniqueItems（不必传给后端）
-// - 严格上下界 / 常量：exclusiveMaximum, exclusiveMinimum, const（Google Schema 不支持）
-// - 组合约束：anyOf/oneOf/allOf 以及其非标准写法 any_of/one_of/all_of（为避免上游实现差异，这里一律去掉）
-const EXCLUDED_KEYS = new Set([
-  '$schema',
-  'additionalProperties',
-  'minLength',
-  'maxLength',
-  'minItems',
-  'maxItems',
-  'uniqueItems',
-  'exclusiveMaximum',
-  'exclusiveMinimum',
-  'const',
-  'anyOf',
-  'oneOf',
-  'allOf',
-  'any_of',
-  'one_of',
-  'all_of'
-]);
-
-function cleanParameters(obj) {
-  if (!obj || typeof obj !== 'object') return obj;
-  
-  const cleaned = Array.isArray(obj) ? [] : {};
-  
-  for (const [key, value] of Object.entries(obj)) {
-    if (EXCLUDED_KEYS.has(key)) continue;
-    const cleanedValue = (value && typeof value === 'object') ? cleanParameters(value) : value;
-    cleaned[key] = cleanedValue;
-  }
-  
-  return cleaned;
-}
-
-function convertOpenAIToolsToAntigravity(openaiTools, sessionId, actualModelName){
-  if (!openaiTools || openaiTools.length === 0) return [];
-  return openaiTools.map((tool)=>{
-    // 先清洗一遍参数，过滤/规范化不兼容字段
-    const rawParams = tool.function?.parameters || {};
-    const cleanedParams = cleanParameters(rawParams) || {};
-
-    // 确保顶层是一个合法的 JSON Schema 对象
-    // 如果用户没显式指定 type，则默认按 OpenAI 习惯设为 object
-    if (cleanedParams.type === undefined) {
-      cleanedParams.type = 'object';
-    }
-    // 对于 object 类型，至少保证有 properties 字段
-    if (cleanedParams.type === 'object' && cleanedParams.properties === undefined) {
-      cleanedParams.properties = {};
-    }
-
-    const originalName = tool.function?.name;
-    const safeName = sanitizeToolName(originalName);
-
-    // 仅当发生转换时才缓存映射
-    if (sessionId && actualModelName && safeName !== originalName) {
-      setToolNameMapping(sessionId, actualModelName, safeName, originalName);
-    }
-
-    return {
-      functionDeclarations: [
-        {
-          name: safeName,
-          description: tool.function.description,
-          parameters: cleanedParams
-        }
-      ]
-    }
-  })
-}
-
-function modelMapping(modelName){
-  if (modelName === "claude-sonnet-4-5-thinking"){
-    return "claude-sonnet-4-5";
-  } else if (modelName === "claude-opus-4-5"){
-    return "claude-opus-4-5-thinking";
-  } else if (modelName === "gemini-2.5-flash-thinking"){
-    return "gemini-2.5-flash";
-  }
-  return modelName;
-}
-
-function isEnableThinking(modelName){
-  // 只要模型名里包含 -thinking（例如 gemini-2.0-flash-thinking-exp），就认为支持思考配置
-  return modelName.includes('-thinking') ||
-    modelName === 'gemini-2.5-pro' ||
-    modelName.startsWith('gemini-3-pro-') ||
-    modelName === "rev19-uic3-1p" ||
-    modelName === "gpt-oss-120b-medium";
-}
-
-function generateRequestBody(openaiMessages,modelName,parameters,openaiTools,token){
-  
-  const enableThinking = isEnableThinking(modelName);
-  const actualModelName = modelMapping(modelName);
-  
-  // 提取合并后的 system 指令
-  const mergedSystemInstruction = extractSystemInstruction(openaiMessages);
-  
-  // 根据 useContextSystemPrompt 配置决定如何处理 system 消息
-  let startIndex = 0;
-  if (config.useContextSystemPrompt) {
-    // 过滤掉开头连续的 system 消息，避免重复作为 user 发送
-    for (let i = 0; i < openaiMessages.length; i++) {
-      if (openaiMessages[i].role === 'system') {
-        startIndex = i + 1;
-      } else {
-        break;
-      }
-    }
-  }
-  const filteredMessages = openaiMessages.slice(startIndex);
-  
-  const requestBody = {
-    project: token.projectId,
-    requestId: generateRequestId(),
-    request: {
-      contents: openaiMessageToAntigravity(filteredMessages, enableThinking, actualModelName, token.sessionId),
-      tools: convertOpenAIToolsToAntigravity(openaiTools, token.sessionId, actualModelName),
-      toolConfig: {
-        functionCallingConfig: {
-          mode: "VALIDATED"
-        }
-      },
-      generationConfig: generateGenerationConfig(parameters, enableThinking, actualModelName),
-      sessionId: token.sessionId
-    },
-    model: actualModelName,
-    userAgent: "antigravity"
-  };
-  
-  // 只有当有 system 指令时才添加 systemInstruction 字段
-  if (mergedSystemInstruction) {
-    requestBody.request.systemInstruction = {
-      role: "user",
-      parts: [{ text: mergedSystemInstruction }]
-    };
-  }
-  
-  return requestBody;
-}
-/**
- * 将通用文本对话请求体转换为图片生成请求体
- * 统一配置 image_gen 所需字段，避免在各处手动删除/覆盖字段
- */
-function prepareImageRequest(requestBody) {
+// ==================== 图片请求准备 ====================
+export function prepareImageRequest(requestBody) {
   if (!requestBody || !requestBody.request) return requestBody;
-
   requestBody.request.generationConfig = { candidateCount: 1 };
   requestBody.requestType = 'image_gen';
-
-  // image_gen 模式下不需要这些字段
   delete requestBody.request.systemInstruction;
   delete requestBody.request.tools;
   delete requestBody.request.toolConfig;
-
   return requestBody;
 }
 
-function getDefaultIp(){
+// ==================== 其他工具 ====================
+export function getDefaultIp() {
   const interfaces = os.networkInterfaces();
-  for (const iface of Object.values(interfaces)){
-    for (const inter of iface){
-      if (inter.family === 'IPv4' && !inter.internal){
+  if (interfaces.WLAN) {
+    for (const inter of interfaces.WLAN) {
+      if (inter.family === 'IPv4' && !inter.internal) {
+        return inter.address;
+      }
+    }
+  } else if (interfaces.wlan2) {
+    for (const inter of interfaces.wlan2) {
+      if (inter.family === 'IPv4' && !inter.internal) {
         return inter.address;
       }
     }
   }
   return '127.0.0.1';
 }
-export{
-  generateRequestId,
-  generateRequestBody,
-  prepareImageRequest,
-  getDefaultIp
-}
+
+// 重导出主要函数
+export { generateRequestId } from './idGenerator.js';
+export { generateRequestBody } from './converters/openai.js';
+export { generateClaudeRequestBody } from './converters/claude.js';
+export { generateGeminiRequestBody } from './converters/gemini.js';

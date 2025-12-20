@@ -5,11 +5,14 @@ function showToast(message, type = 'info', title = '') {
     const titles = { success: '成功', error: '错误', warning: '警告', info: '提示' };
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
+    // 转义用户输入防止 XSS
+    const safeTitle = escapeHtml(title || titles[type]);
+    const safeMessage = escapeHtml(message);
     toast.innerHTML = `
         <div class="toast-icon">${icons[type]}</div>
         <div class="toast-content">
-            <div class="toast-title">${title || titles[type]}</div>
-            <div class="toast-message">${message}</div>
+            <div class="toast-title">${safeTitle}</div>
+            <div class="toast-message">${safeMessage}</div>
         </div>
     `;
     document.body.appendChild(toast);
@@ -23,10 +26,13 @@ function showConfirm(message, title = '确认操作') {
     return new Promise((resolve) => {
         const modal = document.createElement('div');
         modal.className = 'modal';
+        // 转义用户输入防止 XSS
+        const safeTitle = escapeHtml(title);
+        const safeMessage = escapeHtml(message);
         modal.innerHTML = `
             <div class="modal-content">
-                <div class="modal-title">${title}</div>
-                <div class="modal-message">${message}</div>
+                <div class="modal-title">${safeTitle}</div>
+                <div class="modal-message">${safeMessage}</div>
                 <div class="modal-actions">
                     <button class="btn btn-secondary" onclick="this.closest('.modal').remove(); window.modalResolve(false)">取消</button>
                     <button class="btn btn-danger" onclick="this.closest('.modal').remove(); window.modalResolve(true)">确定</button>
@@ -43,7 +49,9 @@ function showLoading(text = '处理中...') {
     const overlay = document.createElement('div');
     overlay.className = 'loading-overlay';
     overlay.id = 'loadingOverlay';
-    overlay.innerHTML = `<div class="spinner"></div><div class="loading-text">${text}</div>`;
+    // 转义用户输入防止 XSS
+    const safeText = escapeHtml(text);
+    overlay.innerHTML = `<div class="spinner"></div><div class="loading-text">${safeText}</div>`;
     document.body.appendChild(overlay);
 }
 
@@ -52,17 +60,56 @@ function hideLoading() {
     if (overlay) overlay.remove();
 }
 
-function switchTab(tab) {
+function switchTab(tab, saveState = true) {
+    // 更新html元素的class以防止闪烁
+    if (tab === 'settings') {
+        document.documentElement.classList.add('tab-settings');
+    } else {
+        document.documentElement.classList.remove('tab-settings');
+    }
+    
+    // 移除所有tab的active状态
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    event.target.classList.add('active');
     
-    document.getElementById('tokensPage').classList.add('hidden');
-    document.getElementById('settingsPage').classList.add('hidden');
+    // 找到对应的tab按钮并激活
+    const targetTab = document.querySelector(`.tab[data-tab="${tab}"]`);
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
     
+    const tokensPage = document.getElementById('tokensPage');
+    const settingsPage = document.getElementById('settingsPage');
+    
+    // 隐藏所有页面并移除动画类
+    tokensPage.classList.add('hidden');
+    tokensPage.classList.remove('page-enter');
+    settingsPage.classList.add('hidden');
+    settingsPage.classList.remove('page-enter');
+    
+    // 显示对应页面并添加入场动画
     if (tab === 'tokens') {
-        document.getElementById('tokensPage').classList.remove('hidden');
+        tokensPage.classList.remove('hidden');
+        // 触发重排以重新播放动画
+        void tokensPage.offsetWidth;
+        tokensPage.classList.add('page-enter');
     } else if (tab === 'settings') {
-        document.getElementById('settingsPage').classList.remove('hidden');
+        settingsPage.classList.remove('hidden');
+        // 触发重排以重新播放动画
+        void settingsPage.offsetWidth;
+        settingsPage.classList.add('page-enter');
         loadConfig();
+    }
+    
+    // 保存当前Tab状态到localStorage
+    if (saveState) {
+        localStorage.setItem('currentTab', tab);
+    }
+}
+
+// 恢复Tab状态
+function restoreTabState() {
+    const savedTab = localStorage.getItem('currentTab');
+    if (savedTab && (savedTab === 'tokens' || savedTab === 'settings')) {
+        switchTab(savedTab, false);
     }
 }

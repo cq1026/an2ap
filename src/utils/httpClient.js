@@ -68,3 +68,10 @@ export async function httpRequest(configOverrides) {
   const axiosConfig = buildAxiosRequestConfig(configOverrides);
   return axios(axiosConfig);
 }
+
+// 流式请求封装
+export async function httpStreamRequest(configOverrides) {
+  const axiosConfig = buildAxiosRequestConfig(configOverrides);
+  axiosConfig.responseType = 'stream';
+  return axios(axiosConfig);
+}

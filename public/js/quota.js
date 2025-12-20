@@ -50,7 +50,7 @@ async function loadTokenQuotaSummary(refreshToken) {
             quotaCache.set(refreshToken, data.data);
             renderQuotaSummary(summaryEl, data.data);
         } else {
-            const errMsg = data.message || '未知错误';
+            const errMsg = escapeHtml(data.message || '未知错误');
             summaryEl.innerHTML = `<span class="quota-summary-error">📊 ${errMsg}</span>`;
         }
     } catch (error) {
@@ -81,12 +81,13 @@ function renderQuotaSummary(summaryEl, quotaData) {
     
     const percentage = minQuota.remaining * 100;
     const percentageText = `${percentage.toFixed(2)}%`;
-    const shortName = minModel.replace('models/', '').replace('publishers/google/', '').split('/').pop();
+    const shortName = escapeHtml(minModel.replace('models/', '').replace('publishers/google/', '').split('/').pop());
+    const safeMinModel = escapeHtml(minModel);
     const barColor = percentage > 50 ? '#10b981' : percentage > 20 ? '#f59e0b' : '#ef4444';
     
     summaryEl.innerHTML = `
         <span class="quota-summary-icon">📊</span>
-        <span class="quota-summary-model" title="${minModel}">${shortName}</span>
+        <span class="quota-summary-model" title="${safeMinModel}">${shortName}</span>
         <span class="quota-summary-bar"><span style="width:${percentage}%;background:${barColor}"></span></span>
         <span class="quota-summary-pct">${percentageText}</span>
     `;
@@ -101,7 +102,8 @@ async function toggleQuotaExpand(cardId, refreshToken) {
     
     if (isHidden) {
         detailEl.classList.remove('hidden');
-        toggleEl.textContent = '▲';
+        detailEl.classList.remove('collapsing');
+        toggleEl.classList.add('expanded');
         
         if (!detailEl.dataset.loaded) {
             detailEl.innerHTML = '<div class="quota-loading-small">加载中...</div>';
@@ -109,8 +111,15 @@ async function toggleQuotaExpand(cardId, refreshToken) {
             detailEl.dataset.loaded = 'true';
         }
     } else {
-        detailEl.classList.add('hidden');
-        toggleEl.textContent = '▼';
+        // 添加收起动画
+        detailEl.classList.add('collapsing');
+        toggleEl.classList.remove('expanded');
+        
+        // 动画结束后隐藏
+        setTimeout(() => {
+            detailEl.classList.add('hidden');
+            detailEl.classList.remove('collapsing');
+        }, 200);
     }
 }
 
@@ -150,9 +159,11 @@ async function loadQuotaDetail(cardId, refreshToken) {
                     const percentage = quota.remaining * 100;
                     const percentageText = `${percentage.toFixed(2)}%`;
                     const barColor = percentage > 50 ? '#10b981' : percentage > 20 ? '#f59e0b' : '#ef4444';
-                    const shortName = modelId.replace('models/', '').replace('publishers/google/', '').split('/').pop();
+                    const shortName = escapeHtml(modelId.replace('models/', '').replace('publishers/google/', '').split('/').pop());
+                    const safeModelId = escapeHtml(modelId);
+                    const safeResetTime = escapeHtml(quota.resetTime);
                     groupHtml += `
-                        <div class="quota-detail-row" title="${modelId} - 重置: ${quota.resetTime}">
+                        <div class="quota-detail-row" title="${safeModelId} - 重置: ${safeResetTime}">
                             <span class="quota-detail-icon">${icon}</span>
                             <span class="quota-detail-name">${shortName}</span>
                             <span class="quota-detail-bar"><span style="width:${percentage}%;background:${barColor}"></span></span>
@@ -167,11 +178,11 @@ async function loadQuotaDetail(cardId, refreshToken) {
             html += renderGroup(grouped.gemini, '💎');
             html += renderGroup(grouped.other, '🔧');
             html += '</div>';
-            html += `<button class="btn btn-info btn-xs quota-refresh-btn" onclick="refreshInlineQuota('${cardId}', '${refreshToken}')">🔄 刷新额度</button>`;
+            html += `<button class="btn btn-info btn-xs quota-refresh-btn" onclick="refreshInlineQuota('${escapeJs(cardId)}', '${escapeJs(refreshToken)}')">🔄 刷新额度</button>`;
             
             detailEl.innerHTML = html;
         } else {
-            const errMsg = data.message || '未知错误';
+            const errMsg = escapeHtml(data.message || '未知错误');
             detailEl.innerHTML = `<div class="quota-error-small">加载失败: ${errMsg}</div>`;
         }
     } catch (error) {
@@ -213,7 +224,9 @@ async function showQuotaModal(refreshToken) {
         const email = t.email || '未知';
         const shortEmail = email.length > 20 ? email.substring(0, 17) + '...' : email;
         const isActive = index === activeIndex;
-        return `<button type="button" class="quota-tab${isActive ? ' active' : ''}" data-index="${index}" onclick="switchQuotaAccountByIndex(${index})" title="${email}">${shortEmail}</button>`;
+        const safeEmail = escapeHtml(email);
+        const safeShortEmail = escapeHtml(shortEmail);
+        return `<button type="button" class="quota-tab${isActive ? ' active' : ''}" data-index="${index}" onclick="switchQuotaAccountByIndex(${index})" title="${safeEmail}">${safeShortEmail}</button>`;
     }).join('');
     
     const modal = document.createElement('div');
@@ -315,11 +328,11 @@ async function loadQuotaData(refreshToken, forceRefresh = false) {
             quotaCache.set(refreshToken, data.data);
             renderQuotaModal(quotaContent, data.data);
         } else {
-            quotaContent.innerHTML = `<div class="quota-error">加载失败: ${data.message}</div>`;
+            quotaContent.innerHTML = `<div class="quota-error">加载失败: ${escapeHtml(data.message)}</div>`;
         }
     } catch (error) {
         if (quotaContent) {
-            quotaContent.innerHTML = `<div class="quota-error">加载失败: ${error.message}</div>`;
+            quotaContent.innerHTML = `<div class="quota-error">加载失败: ${escapeHtml(error.message)}</div>`;
         }
     } finally {
         if (refreshBtn) {
@@ -363,20 +376,22 @@ function renderQuotaModal(quotaContent, quotaData) {
     
     const renderGroup = (items, title) => {
         if (items.length === 0) return '';
-        let groupHtml = `<div class="quota-group-title">${title}</div><div class="quota-grid">`;
+        let groupHtml = `<div class="quota-group-title">${escapeHtml(title)}</div><div class="quota-grid">`;
         items.forEach(({ modelId, quota }) => {
             const percentage = quota.remaining * 100;
             const percentageText = `${percentage.toFixed(2)}%`;
             const barColor = percentage > 50 ? '#10b981' : percentage > 20 ? '#f59e0b' : '#ef4444';
-            const shortName = modelId.replace('models/', '').replace('publishers/google/', '');
+            const shortName = escapeHtml(modelId.replace('models/', '').replace('publishers/google/', ''));
+            const safeModelId = escapeHtml(modelId);
+            const safeResetTime = escapeHtml(quota.resetTime);
             groupHtml += `
                 <div class="quota-item">
-                    <div class="quota-model-name" title="${modelId}">${shortName}</div>
+                    <div class="quota-model-name" title="${safeModelId}">${shortName}</div>
                     <div class="quota-bar-container">
                         <div class="quota-bar" style="width: ${percentage}%; background: ${barColor};"></div>
                     </div>
                     <div class="quota-info-row">
-                        <span class="quota-reset">重置: ${quota.resetTime}</span>
+                        <span class="quota-reset">重置: ${safeResetTime}</span>
                         <span class="quota-percentage">${percentageText}</span>
                     </div>
                 </div>

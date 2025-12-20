@@ -23,6 +23,11 @@
 - ✅ 隐私模式（自动隐藏敏感信息）
 - ✅ 内存优化（从 8+ 进程减少为 2 个进程，内存占用从 100MB+ 降为 50MB+）
 - ✅ 对象池复用（减少 50%+ 临时对象创建，降低 GC 频率）
+- ✅ 签名透传控制（可配置是否将 thoughtSignature 透传到客户端）
+- ✅ 预编译二进制文件（支持 Windows/Linux/Android，无需 Node.js 环境）
+- ✅ 多 API 格式支持（OpenAI、Gemini、Claude 三种格式）
+- ✅ 转换器代码复用（公共模块提取，减少重复代码）
+- ✅ 动态内存阈值（根据用户配置自动计算各级别阈值）
 
 ## 环境要求
 
@@ -74,6 +79,114 @@ npm start
 ```
 
 服务将在 `http://localhost:8045` 启动。
+
+## 二进制文件部署（推荐）
+
+无需安装 Node.js，直接下载预编译的二进制文件即可运行。
+
+### 下载二进制文件
+
+从 [GitHub Releases](https://github.com/ZhaoShanGeng/antigravity2api-nodejs/releases) 下载对应平台的二进制文件：
+
+| 平台 | 文件名 |
+|------|--------|
+| Windows x64 | `antigravity2api-win-x64.exe` |
+| Linux x64 | `antigravity2api-linux-x64` |
+| Linux ARM64 | `antigravity2api-linux-arm64` |
+| macOS x64 | `antigravity2api-macos-x64` |
+| macOS ARM64 | `antigravity2api-macos-arm64` |
+
+### 准备配置文件
+
+将以下文件放在二进制文件同目录下：
+
+```
+├── antigravity2api-win-x64.exe  # 二进制文件
+├── .env                          # 环境变量配置（必需）
+├── config.json                   # 基础配置（必需）
+├── public/                       # 静态文件目录（必需）
+│   ├── index.html
+│   ├── style.css
+│   ├── assets/
+│   │   └── bg.jpg
+│   └── js/
+│       ├── auth.js
+│       ├── config.js
+│       ├── main.js
+│       ├── quota.js
+│       ├── tokens.js
+│       ├── ui.js
+│       └── utils.js
+└── data/                         # 数据目录（自动创建）
+    └── accounts.json
+```
+
+### 配置环境变量
+
+创建 `.env` 文件：
+
+```env
+API_KEY=sk-your-api-key
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+JWT_SECRET=your-jwt-secret-key-change-this-in-production
+# IMAGE_BASE_URL=http://your-domain.com
+# PROXY=http://127.0.0.1:7890
+```
+
+### 运行
+
+**Windows**：
+```bash
+# 直接双击运行，或在命令行执行
+antigravity2api-win-x64.exe
+```
+
+**Linux/macOS**：
+```bash
+# 添加执行权限
+chmod +x antigravity2api-linux-x64
+
+# 运行
+./antigravity2api-linux-x64
+```
+
+### 二进制部署说明
+
+- **无需 Node.js**：二进制文件已包含 Node.js 运行时
+- **配置文件**：`.env` 和 `config.json` 必须与二进制文件在同一目录
+- **静态文件**：`public/` 目录必须与二进制文件在同一目录
+- **数据持久化**：`data/` 目录会自动创建，用于存储 Token 数据
+- **跨平台**：支持 Windows、Linux、macOS（x64 和 ARM64）
+
+### 作为系统服务运行（Linux）
+
+创建 systemd 服务文件 `/etc/systemd/system/antigravity2api.service`：
+
+```ini
+[Unit]
+Description=Antigravity2API Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/antigravity2api
+ExecStart=/opt/antigravity2api/antigravity2api-linux-x64
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+启动服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable antigravity2api
+sudo systemctl start antigravity2api
+```
 
 ## Docker 部署
 
@@ -365,7 +478,9 @@ curl http://localhost:8045/v1/chat/completions \
   "other": {
     "timeout": 300000,         // 请求超时时间（毫秒）
     "skipProjectIdFetch": false,// 跳过 ProjectId 获取，直接随机生成（仅 Pro 账号有效）
-    "useNativeAxios": false    // 使用原生 axios 而非 AntigravityRequester
+    "useNativeAxios": false,   // 使用原生 axios 而非 AntigravityRequester
+    "useContextSystemPrompt": false, // 是否将请求中的 system 消息合并到 SystemInstruction
+    "passSignatureToClient": false   // 是否将 thoughtSignature 透传到客户端
   }
 }
 ```
@@ -375,8 +490,8 @@ curl http://localhost:8045/v1/chat/completions \
 | 策略 | 说明 |
 |------|------|
 | `round_robin` | 均衡负载：每次请求后切换到下一个 Token |
-| `quota_exhausted` | 额度耗尽才切换：持续使用当前 Token 直到额度用完 |
-| `request_count` | 自定义次数：每个 Token 使用指定次数后切换 |
+| `quota_exhausted` | 额度耗尽才切换：持续使用当前 Token 直到额度用完（高性能优化） |
+| `request_count` | 自定义次数：每个 Token 使用指定次数后切换（默认策略） |
 
 ### 2. .env（敏感配置）
 
@@ -425,10 +540,12 @@ npm run login
 │   └── refresh-tokens.js   # Token 刷新脚本
 ├── src/
 │   ├── api/
-│   │   └── client.js       # API 调用逻辑（含模型列表缓存）
+│   │   ├── client.js       # API 调用逻辑（含模型列表缓存）
+│   │   └── stream_parser.js # 流式响应解析（对象池优化）
 │   ├── auth/
 │   │   ├── jwt.js          # JWT 认证
 │   │   ├── token_manager.js # Token 管理（含轮询策略）
+│   │   ├── token_store.js  # Token 文件存储（异步读写）
 │   │   └── quota_manager.js # 额度缓存管理
 │   ├── routes/
 │   │   ├── admin.js        # 管理接口路由
@@ -441,6 +558,7 @@ npm run login
 │   │   ├── config.js       # 配置加载
 │   │   └── init-env.js     # 环境变量初始化
 │   ├── constants/
+│   │   ├── index.js        # 应用常量定义
 │   │   └── oauth.js        # OAuth 常量
 │   ├── server/
 │   │   └── index.js        # 主服务器（含内存管理和心跳）
@@ -448,10 +566,22 @@ npm run login
 │   │   ├── configReloader.js # 配置热重载
 │   │   ├── deepMerge.js    # 深度合并工具
 │   │   ├── envParser.js    # 环境变量解析
+│   │   ├── errors.js       # 统一错误处理
 │   │   ├── idGenerator.js  # ID 生成器
 │   │   ├── imageStorage.js # 图片存储
 │   │   ├── logger.js       # 日志模块
-│   │   └── utils.js        # 工具函数
+│   │   ├── memoryManager.js # 智能内存管理
+│   │   ├── parameterNormalizer.js # 统一参数处理
+│   │   ├── paths.js        # 路径工具（支持 pkg 打包）
+│   │   ├── thoughtSignatureCache.js # 签名缓存
+│   │   ├── toolConverter.js # 工具定义转换
+│   │   ├── toolNameCache.js # 工具名称缓存
+│   │   └── utils.js        # 工具函数（重导出）
+│   │   └── converters/     # 格式转换器
+│   │       ├── common.js   # 公共函数
+│   │       ├── openai.js   # OpenAI 格式
+│   │       ├── claude.js   # Claude 格式
+│   │       └── gemini.js   # Gemini 格式
 │   └── AntigravityRequester.js # TLS 指纹请求器封装
 ├── test/
 │   ├── test-request.js     # 请求测试
@@ -517,38 +647,94 @@ messages = [{role: user, content: 你好}]
 - 充分利用 Antigravity 的 SystemInstruction 功能
 - 确保系统提示词的完整性和优先级
 
-## 思考预算（Thinking Budget）
+## 多 API 格式支持
 
-对于支持思考能力的模型（如 gemini-2.0-flash-thinking-exp），可以通过以下方式控制思考深度：
+本服务支持三种 API 格式，每种格式都有完整的参数支持：
 
-### 方式一：使用 reasoning_effort 参数（OpenAI 兼容）
+### OpenAI 格式 (`/v1/chat/completions`)
 
 ```json
 {
   "model": "gemini-2.0-flash-thinking-exp",
+  "max_tokens": 16000,
+  "temperature": 0.7,
+  "top_p": 0.9,
+  "top_k": 40,
+  "thinking_budget": 10000,
   "reasoning_effort": "high",
   "messages": [...]
 }
 ```
 
-| 值 | 思考 Token 预算 |
-|---|----------------|
-| `low` | 1024 |
-| `medium` | 16000 |
-| `high` | 32000 |
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `max_tokens` | 最大输出 token 数 | 32000 |
+| `temperature` | 温度 (0.0-1.0) | 1 |
+| `top_p` | Top-P 采样 | 1 |
+| `top_k` | Top-K 采样 | 50 |
+| `thinking_budget` | 思考预算 (1024-32000) | 1024 |
+| `reasoning_effort` | 思考强度 (`low`/`medium`/`high`) | - |
 
-### 方式二：使用 thinking_budget 参数（精确控制）
+### Claude 格式 (`/v1/messages`)
 
 ```json
 {
-  "model": "gemini-2.0-flash-thinking-exp",
-  "thinking_budget": 24000,
+  "model": "claude-sonnet-4-5-thinking",
+  "max_tokens": 16000,
+  "temperature": 0.7,
+  "top_p": 0.9,
+  "top_k": 40,
+  "thinking": {
+    "type": "enabled",
+    "budget_tokens": 10000
+  },
   "messages": [...]
 }
 ```
 
-- 范围：1024 - 32000
-- 优先级：`thinking_budget` > `reasoning_effort` > 配置文件默认值
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `max_tokens` | 最大输出 token 数 | 32000 |
+| `temperature` | 温度 (0.0-1.0) | 1 |
+| `top_p` | Top-P 采样 | 1 |
+| `top_k` | Top-K 采样 | 50 |
+| `thinking.type` | 思考开关 (`enabled`/`disabled`) | - |
+| `thinking.budget_tokens` | 思考预算 (1024-32000) | 1024 |
+
+### Gemini 格式 (`/v1beta/models/:model:generateContent`)
+
+```json
+{
+  "contents": [...],
+  "generationConfig": {
+    "maxOutputTokens": 16000,
+    "temperature": 0.7,
+    "topP": 0.9,
+    "topK": 40,
+    "thinkingConfig": {
+      "includeThoughts": true,
+      "thinkingBudget": 10000
+    }
+  }
+}
+```
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `maxOutputTokens` | 最大输出 token 数 | 32000 |
+| `temperature` | 温度 (0.0-1.0) | 1 |
+| `topP` | Top-P 采样 | 1 |
+| `topK` | Top-K 采样 | 50 |
+| `thinkingConfig.includeThoughts` | 是否包含思考内容 | true |
+| `thinkingConfig.thinkingBudget` | 思考预算 (1024-32000) | 1024 |
+
+### 统一参数处理
+
+所有三种格式的参数都会被统一规范化处理，确保一致的行为：
+
+1. **参数优先级**：请求参数 > 配置文件默认值
+2. **思考预算优先级**：`thinking_budget`/`budget_tokens`/`thinkingBudget` > `reasoning_effort` > 配置文件默认值
+3. **禁用思考**：设置 `thinking_budget=0` 或 `thinking.type="disabled"` 或 `thinkingConfig.includeThoughts=false`
 
 ### DeepSeek 思考格式兼容
 
@@ -564,6 +750,14 @@ messages = [{role: user, content: 你好}]
   }]
 }
 ```
+
+### reasoning_effort 映射
+
+| 值 | 思考 Token 预算 |
+|---|----------------|
+| `low` | 1024 |
+| `medium` | 16000 |
+| `high` | 32000 |
 
 ## 内存优化
 
@@ -582,8 +776,19 @@ messages = [{role: user, content: 你好}]
 1. **对象池复用**：流式响应对象通过对象池复用，减少 50%+ 临时对象创建
 2. **预编译常量**：正则表达式、格式字符串等预编译，避免重复创建
 3. **LineBuffer 优化**：高效的流式行分割，避免频繁字符串操作
-4. **自动内存清理**：堆内存超过阈值（默认 100MB）时自动触发 GC
+4. **自动内存清理**：堆内存超过阈值时自动触发 GC
 5. **进程精简**：移除不必要的子进程，统一在主进程处理
+
+### 动态内存阈值
+
+内存压力阈值根据用户配置的 `memoryThreshold`（MB）动态计算：
+
+| 压力级别 | 阈值比例 | 默认值（100MB 配置） | 行为 |
+|---------|---------|---------------------|------|
+| LOW | 30% | 30MB | 正常运行 |
+| MEDIUM | 60% | 60MB | 轻度清理 |
+| HIGH | 100% | 100MB | 积极清理 + GC |
+| CRITICAL | >100% | >100MB | 紧急清理 + 强制 GC |
 
 ### 配置
 
@@ -595,7 +800,7 @@ messages = [{role: user, content: 你好}]
 }
 ```
 
-- `memoryThreshold`：触发 GC 的堆内存阈值（MB）
+- `memoryThreshold`：高压力阈值（MB），其他级别按比例自动计算
 
 ## 心跳机制
 
@@ -616,6 +821,58 @@ messages = [{role: user, content: 你好}]
 ```
 
 - `heartbeatInterval`：心跳间隔（毫秒），设为 0 禁用心跳
+
+## 代码架构
+
+### 转换器模块
+
+项目支持三种 API 格式（OpenAI、Gemini、Claude），转换器代码经过优化，提取了公共模块：
+
+```
+src/utils/converters/
+├── common.js      # 公共函数（签名处理、消息构建、请求体构建等）
+├── openai.js      # OpenAI 格式转换器
+├── claude.js      # Claude 格式转换器
+└── gemini.js      # Gemini 格式转换器
+```
+
+#### 公共函数
+
+| 函数 | 说明 |
+|------|------|
+| `getSignatureContext()` | 获取思维签名和工具签名 |
+| `pushUserMessage()` | 添加用户消息到消息数组 |
+| `findFunctionNameById()` | 根据工具调用 ID 查找函数名 |
+| `pushFunctionResponse()` | 添加函数响应到消息数组 |
+| `createThoughtPart()` | 创建带签名的思维 part |
+| `createFunctionCallPart()` | 创建带签名的函数调用 part |
+| `processToolName()` | 处理工具名称映射 |
+| `pushModelMessage()` | 添加模型消息到消息数组 |
+| `buildRequestBody()` | 构建 Antigravity 请求体 |
+| `mergeSystemInstruction()` | 合并系统指令 |
+
+### 参数规范化模块
+
+```
+src/utils/parameterNormalizer.js  # 统一参数处理
+```
+
+将 OpenAI、Claude、Gemini 三种格式的参数统一转换为内部格式：
+
+| 函数 | 说明 |
+|------|------|
+| `normalizeOpenAIParameters()` | 规范化 OpenAI 格式参数 |
+| `normalizeClaudeParameters()` | 规范化 Claude 格式参数 |
+| `normalizeGeminiParameters()` | 规范化 Gemini 格式参数 |
+| `toGenerationConfig()` | 转换为上游 API 格式 |
+
+### 工具转换模块
+
+```
+src/utils/toolConverter.js  # 统一的工具定义转换
+```
+
+支持将 OpenAI、Claude、Gemini 三种格式的工具定义转换为 Antigravity 格式。
 
 ## 注意事项
 
