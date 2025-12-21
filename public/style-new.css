@@ -483,9 +483,13 @@ body {
 }
 
 .dark .form-input,
-.dark .form-select,
 .dark .form-textarea {
   background: var(--zinc-950);
+  border-color: var(--zinc-800);
+}
+
+.dark .form-select {
+  background-color: var(--zinc-950);
   border-color: var(--zinc-800);
 }
 
@@ -1507,6 +1511,10 @@ input[type="number"] {
   display: flex;
 }
 
+.flex-1 {
+  flex: 1;
+}
+
 .flex-col {
   flex-direction: column;
 }
@@ -1541,4 +1549,21 @@ input[type="number"] {
 
 .hidden {
   display: none;
+}
+
+/* 最大宽度工具类 */
+.max-w-sm {
+  max-width: 384px;
+}
+
+.max-w-lg {
+  max-width: 512px;
+}
+
+.max-w-xl {
+  max-width: 576px;
+}
+
+.max-w-2xl {
+  max-width: 672px;
 }
