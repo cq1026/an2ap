@@ -557,7 +557,7 @@
 
             return (
                 <Modal isOpen={isOpen} onClose={onClose} title="添加 Token 凭证">
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
                         <button
                             style={{
                                 padding: '8px 16px',
@@ -593,21 +593,22 @@
                     </div>
 
                     {activeTab === 'oauth' ? (
-                        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                             <div style={{
                                 background: 'var(--zinc-50)',
-                                padding: '16px',
+                                padding: '12px',
                                 borderRadius: '8px',
                                 border: '1px solid var(--border-color)',
-                                fontSize: '14px',
+                                fontSize: '13px',
                                 color: 'var(--zinc-600)',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                gap: '8px'
+                                gap: '4px',
+                                lineHeight: '1.5'
                             }}>
-                                <p>1. 点击下方按钮打开 Google 授权页面。</p>
-                                <p>2. 授权完成后，复制浏览器地址栏的完整 URL。</p>
-                                <p>3. 将 URL 粘贴到下方输入框。</p>
+                                <p style={{ margin: 0 }}>1. 点击下方按钮打开 Google 授权页面。</p>
+                                <p style={{ margin: 0 }}>2. 授权完成后，复制浏览器地址栏的完整 URL。</p>
+                                <p style={{ margin: 0 }}>3. 将 URL 粘贴到下方输入框。</p>
                             </div>
                             <div style={{ display: 'flex', gap: '8px' }}>
                                 <Button variant="secondary" className="flex-1" onClick={openOAuthWindow}>
@@ -617,7 +618,7 @@
                                     <Icon name="Copy" size={16} />
                                 </Button>
                             </div>
-                            <form onSubmit={handleOAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <form onSubmit={handleOAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 <Input label="回调 URL" placeholder="http://localhost:xxxxx/oauth-callback?code=..." value={oauthUrl} onChange={(e) => setOauthUrl(e.target.value)} />
                                 <Button type="submit" className="w-full" loading={loading}>解析并添加</Button>
                             </form>

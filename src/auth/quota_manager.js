@@ -133,13 +133,8 @@ class QuotaManager {
     if (!utcTimeStr) return 'N/A';
     try {
       const utcDate = new Date(utcTimeStr);
-      return utcDate.toLocaleString('zh-CN', {
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Asia/Shanghai'
-      });
+      // 返回时间戳（毫秒），让前端自己格式化
+      return utcDate.getTime();
     } catch (error) {
       return 'N/A';
     }
