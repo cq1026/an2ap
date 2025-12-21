@@ -623,7 +623,7 @@
                             </form>
                         </div>
                     ) : (
-                        <form onSubmit={handleManualSubmit} className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <form onSubmit={handleManualSubmit} className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column' }}>
                             <Input label="Access Token" placeholder="必填" value={manualForm.accessToken} onChange={(e) => setManualForm({ ...manualForm, accessToken: e.target.value })} />
                             <Input label="Refresh Token" placeholder="必填" value={manualForm.refreshToken} onChange={(e) => setManualForm({ ...manualForm, refreshToken: e.target.value })} />
                             <Input label="过期时间 (秒)" type="number" value={manualForm.expiresIn} onChange={(e) => setManualForm({ ...manualForm, expiresIn: e.target.value })} help="默认 3599 秒（约1小时）" />
