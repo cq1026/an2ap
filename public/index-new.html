@@ -571,10 +571,10 @@
 
             return (
                 <Modal isOpen={isOpen} onClose={onClose} title="添加 Token 凭证">
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
                         <button
                             style={{
-                                padding: '8px 16px',
+                                padding: '0 16px 8px 16px',
                                 background: 'transparent',
                                 border: 'none',
                                 borderBottom: activeTab === 'oauth' ? '2px solid var(--text-primary)' : '2px solid transparent',
@@ -590,7 +590,7 @@
                         </button>
                         <button
                             style={{
-                                padding: '8px 16px',
+                                padding: '0 16px 8px 16px',
                                 background: 'transparent',
                                 border: 'none',
                                 borderBottom: activeTab === 'manual' ? '2px solid var(--text-primary)' : '2px solid transparent',
