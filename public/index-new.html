@@ -1014,7 +1014,18 @@
 
                     const data = await response.json();
                     if (data.success) {
+                        // 额外调用 rotation API 更新 tokenManager 的运行时状态
+                        if (jsonConfig.rotation && Object.keys(jsonConfig.rotation).length > 0) {
+                            await authFetch('/admin/rotation', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(jsonConfig.rotation)
+                            });
+                        }
+
                         addToast('配置已保存并生效', 'success');
+                        // 重新加载配置以确保UI显示最新值
+                        loadConfig();
                     } else {
                         addToast('保存配置失败: ' + data.message, 'error');
                     }
