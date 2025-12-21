@@ -386,6 +386,11 @@
                 else grouped.other.push(item);
             });
 
+            // 对每个分组内的模型按字母顺序排序，确保顺序稳定
+            grouped.claude.sort((a, b) => a.modelId.localeCompare(b.modelId));
+            grouped.gemini.sort((a, b) => a.modelId.localeCompare(b.modelId));
+            grouped.other.sort((a, b) => a.modelId.localeCompare(b.modelId));
+
             const getBarClass = (pct) => {
                 if (pct > 50) return 'high';
                 if (pct > 20) return 'medium';
