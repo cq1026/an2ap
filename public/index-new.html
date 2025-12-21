@@ -394,7 +394,7 @@
                                             <span className="quota-model-name">{item.modelId}</span>
                                             <div className="quota-reset-time">
                                                 <Icon name="Clock" size={10} />
-                                                <span>{typeof item.resetTime === 'number' ? formatTime(item.resetTime) : item.resetTime}</span>
+                                                <span>{item.resetTimeRaw ? formatTime(new Date(item.resetTimeRaw).getTime()) : item.resetTime}</span>
                                             </div>
                                         </div>
                                         <div className="quota-progress-bar">
