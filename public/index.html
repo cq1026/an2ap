@@ -55,48 +55,6 @@ html.tab-settings .tab[data-tab="settings"] {
     background: var(--primary, #4f46e5) !important;
     color: white !important;
 }
-/* 版本切换按钮 */
-#versionSwitcher {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 10000;
-}
-#versionSwitcher button {
-    padding: 8px 16px;
-    background: white;
-    color: #18181b;
-    border: 2px solid #e4e4e7;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-#versionSwitcher button:hover {
-    background: #f4f4f5;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    border-color: #d4d4d8;
-}
-#versionSwitcher button:active {
-    transform: translateY(0);
-}
-@media (prefers-color-scheme: dark) {
-    #versionSwitcher button {
-        background: #27272a;
-        color: #fafafa;
-        border-color: #3f3f46;
-    }
-    #versionSwitcher button:hover {
-        background: #3f3f46;
-        border-color: #52525b;
-    }
-}
     </style>
     <!-- 主样式表 - 优先加载 -->
     <link rel="stylesheet" href="style.css">
@@ -113,14 +71,6 @@ html.tab-settings .tab[data-tab="settings"] {
     </noscript>
 </head>
 <body>
-    <!-- 版本切换按钮 -->
-    <div id="versionSwitcher">
-        <button onclick="switchToNewVersion()">
-            <span>🎨</span>
-            <span>切换到新版界面</span>
-        </button>
-    </div>
-
     <div class="container">
         <!-- 登录表单 -->
         <div id="loginForm" class="login-form">
@@ -146,6 +96,7 @@ html.tab-settings .tab[data-tab="settings"] {
                 <button class="tab" data-tab="settings" onclick="switchTab('settings')">⚙️ 设置</button>
             </div>
                 <div class="header-right">
+                    <button onclick="switchToNewVersion()">🎨 切换到新版界面</button>
                     <button onclick="logout()">🚪 退出</button>
                 </div>
             </div>
