@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Antigravity Console</title>
+
+    <!-- 版本切换：检查用户偏好并自动跳转 -->
+    <script>
+        (function() {
+            var preferred = localStorage.getItem('uiVersion');
+            if (!preferred || preferred === 'old') {
+                window.location.href = '/index.html';
+                return;
+            }
+        })();
+    </script>
+
+    <!-- 字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- 样式 -->
+    <link rel="stylesheet" href="style-new.css">
+</head>
+<body>
+    <!-- 版本切换按钮 -->
+    <div id="versionSwitcher">
+        <button onclick="switchToOldVersion()">
+            <span>📋</span>
+            <span>切换到经典版</span>
+        </button>
+    </div>
+
+    <div id="root"></div>
+
+    <script>
+        // 版本切换函数
+        function switchToOldVersion() {
+            localStorage.setItem('uiVersion', 'old');
+            window.location.href = '/index.html';
+        }
+    </script>
+
+    <script type="text/babel">
+        const { useState, useEffect, createContext, useContext } = React;
+
+        // ==================== 全局常量 ====================
+        const CLIENT_ID = '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
+        const SCOPES = [
+            'https://www.googleapis.com/auth/cloud-platform',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
+            'https://www.googleapis.com/auth/cclog',
+            'https://www.googleapis.com/auth/experimentsandconfigs'
+        ].join(' ');
+
+        // ==================== Icons ====================
+        const Icon = ({ name, size = 18, className = "" }) => {
+            const icons = {
+                Zap: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>,
+                LayoutGrid: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" /></svg>,
+                Settings: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>,
+                LogOut: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" x2="9" y1="12" y2="12" /></svg>,
+                Plus: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14" /><path d="M12 5v14" /></svg>,
+                RefreshCw: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>,
+                Trash2: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>,
+                BarChart3: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 3v18h18" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></svg>,
+                ExternalLink: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" x2="21" y1="14" y2="3" /></svg>,
+                X: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>,
+                Check: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="20 6 9 17 4 12" /></svg>,
+                Clock: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+                Sun: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg>,
+                Moon: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg>,
+                Eye: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+                EyeOff: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>,
+                Copy: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>,
+                Edit: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>,
+            };
+            return icons[name] || null;
+        };
+
+        // ==================== Toast Context ====================
+        const ToastContext = createContext();
+
+        const ToastProvider = ({ children }) => {
+            const [toasts, setToasts] = useState([]);
+
+            const addToast = (message, type = 'info') => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, message, type }]);
+                setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+            };
+
+            return (
+                <ToastContext.Provider value={{ addToast }}>
+                    {children}
+                    <div className="toast-container">
+                        {toasts.map(toast => (
+                            <div key={toast.id} className={`toast ${toast.type} animate-slide-up`}>
+                                {toast.type === 'success' && <Icon name="Check" size={16} />}
+                                <span>{toast.message}</span>
+                            </div>
+                        ))}
+                    </div>
+                </ToastContext.Provider>
+            );
+        };
+
+        const useToast = () => useContext(ToastContext);
+
+        // ==================== API 辅助函数 ====================
+        const authFetch = async (url, options = {}) => {
+            const token = localStorage.getItem('authToken');
+            const response = await fetch(url, {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('authToken');
+                window.location.reload();
+                throw new Error('Unauthorized');
+            }
+
+            return response;
+        };
+
+        // ==================== UI 组件 ====================
+        const Button = ({ children, variant = 'primary', size = 'md', className = "", onClick, loading, disabled, title, type = "button" }) => {
+            const variantClass = `btn-${variant}`;
+            const sizeClass = `btn-${size}`;
+            const loadingClass = loading ? 'btn-loading' : '';
+
+            return (
+                <button
+                    type={type}
+                    className={`btn ${variantClass} ${sizeClass} ${loadingClass} ${className}`}
+                    onClick={onClick}
+                    disabled={disabled || loading}
+                    title={title}
+                >
+                    {children}
+                </button>
+            );
+        };
+
+        const Card = ({ children, className = "" }) => (
+            <div className={`card ${className}`}>{children}</div>
+        );
+
+        const Modal = ({ isOpen, onClose, title, children, footer, maxWidth = "max-w-lg" }) => {
+            if (!isOpen) return null;
+
+            return ReactDOM.createPortal(
+                <div className="modal-overlay animate-fade-in" onClick={onClose}>
+                    <div className={`modal-container ${maxWidth} animate-slide-up`} onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">{title}</h3>
+                            <button onClick={onClose} className="modal-close">
+                                <Icon name="X" />
+                            </button>
+                        </div>
+                        <div className="modal-body">{children}</div>
+                        {footer && <div className="modal-footer">{footer}</div>}
+                    </div>
+                </div>,
+                document.body
+            );
+        };
+
+        const Input = ({ label, help, className = "", ...props }) => (
+            <div className={`form-group ${className}`}>
+                {label && <label className="form-label">{label}</label>}
+                <input className="form-input" {...props} />
+                {help && <p className="form-help">{help}</p>}
+            </div>
+        );
+
+        const Select = ({ label, help, options, className = "", ...props }) => (
+            <div className={`form-group ${className}`}>
+                {label && <label className="form-label">{label}</label>}
+                <select className="form-select" {...props}>
+                    {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                </select>
+                {help && <p className="form-help">{help}</p>}
+            </div>
+        );
+
+        const Toggle = ({ label, checked, onChange, help, className = "" }) => (
+            <div className={`toggle-wrapper ${className}`} onClick={() => onChange(!checked)}>
+                <div className="toggle-switch">
+                    <input type="checkbox" className="toggle-input" checked={checked} onChange={() => {}} />
+                    <span className="toggle-slider"></span>
+                </div>
+                <div className="toggle-label">
+                    <span className="toggle-label-text">{label}</span>
+                    {help && <span className="toggle-label-help">{help}</span>}
+                </div>
+            </div>
+        );
+
+        const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => (
+            <Modal isOpen={isOpen} onClose={onClose} title={title} footer={
+                <>
+                    <Button variant="secondary" size="sm" onClick={onClose}>取消</Button>
+                    <Button variant="danger" size="sm" onClick={onConfirm}>确定</Button>
+                </>
+            }>
+                <p>{message}</p>
+            </Modal>
+        );
+
+        // ==================== Token Detail Modal ====================
+        const TokenDetailModal = ({ isOpen, onClose, token, onSave }) => {
+            const [form, setForm] = useState({ projectId: '', email: '' });
+            const [isSaving, setIsSaving] = useState(false);
+            const { addToast } = useToast();
+
+            useEffect(() => {
+                if (token) {
+                    setForm({ projectId: token.projectId || '', email: token.email || '' });
+                }
+            }, [token]);
+
+            if (!isOpen || !token) return null;
+
+            const handleCopy = (text, label) => {
+                navigator.clipboard.writeText(text).then(() => {
+                    addToast(`${label} 已复制`, 'success');
+                }).catch(() => addToast('复制失败', 'error'));
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setIsSaving(true);
+                try {
+                    await onSave(token.refresh_token, form);
+                    onClose();
+                } catch (error) {
+                    addToast('保存失败: ' + error.message, 'error');
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+            const expireTime = new Date(token.timestamp + token.expires_in * 1000).toLocaleString('zh-CN');
+
+            return (
+                <Modal isOpen={isOpen} onClose={onClose} title="Token 详情与编辑" footer={
+                    <>
+                        <Button variant="secondary" size="sm" onClick={onClose}>取消</Button>
+                        <Button size="sm" onClick={handleSubmit} loading={isSaving}>保存修改</Button>
+                    </>
+                }>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        <div className="form-group">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                <label className="form-label">Access Token (只读)</label>
+                                <button onClick={() => handleCopy(token.access_token || '', 'Access Token')} className="btn btn-ghost btn-icon" style={{ padding: '4px' }}>
+                                    <Icon name="Copy" size={14} />
+                                </button>
+                            </div>
+                            <div className="font-mono" style={{
+                                padding: '8px 12px',
+                                background: 'var(--zinc-50)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                color: 'var(--zinc-500)',
+                                wordBreak: 'break-all',
+                                maxHeight: '96px',
+                                overflowY: 'auto'
+                            }}>
+                                {token.access_token || '暂无数据'}
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                <label className="form-label">Refresh Token (只读)</label>
+                                <button onClick={() => handleCopy(token.refresh_token, 'Refresh Token')} className="btn btn-ghost btn-icon" style={{ padding: '4px' }}>
+                                    <Icon name="Copy" size={14} />
+                                </button>
+                            </div>
+                            <div className="font-mono" style={{
+                                padding: '8px 12px',
+                                background: 'var(--zinc-50)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                                color: 'var(--zinc-500)',
+                                wordBreak: 'break-all',
+                                maxHeight: '96px',
+                                overflowY: 'auto'
+                            }}>
+                                {token.refresh_token}
+                            </div>
+                        </div>
+
+                        <Input
+                            label="Project ID"
+                            value={form.projectId}
+                            onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+                            placeholder="输入 Google Cloud Project ID"
+                        />
+
+                        <Input
+                            label="Email"
+                            type="email"
+                            value={form.email}
+                            onChange={(e) => setForm({ ...form, email: e.target.value })}
+                            placeholder="输入关联邮箱"
+                        />
+
+                        <div className="form-group">
+                            <label className="form-label">过期时间</label>
+                            <input className="form-input" value={expireTime} readOnly disabled />
+                        </div>
+                    </div>
+                </Modal>
+            );
+        };
+
+        // ==================== Quota Modal ====================
+        const QuotaModal = ({ isOpen, onClose, token }) => {
+            const [loading, setLoading] = useState(false);
+            const [quotas, setQuotas] = useState({});
+            const { addToast } = useToast();
+
+            useEffect(() => {
+                if (isOpen && token) {
+                    loadQuotas(false);
+                }
+            }, [isOpen, token]);
+
+            const loadQuotas = async (forceRefresh) => {
+                if (!token) return;
+
+                setLoading(true);
+                try {
+                    const response = await authFetch(`/admin/tokens/${encodeURIComponent(token.refresh_token)}/quotas?refresh=${forceRefresh}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        setQuotas(data.data.models);
+                        if (forceRefresh) {
+                            addToast('额度数据已刷新', 'success');
+                        }
+                    } else {
+                        addToast('加载失败: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    addToast('加载失败: ' + error.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            if (!isOpen || !token) return null;
+
+            const grouped = { claude: [], gemini: [], other: [] };
+            Object.entries(quotas).forEach(([modelId, quota]) => {
+                const item = { modelId, ...quota };
+                if (modelId.toLowerCase().includes('claude')) grouped.claude.push(item);
+                else if (modelId.toLowerCase().includes('gemini')) grouped.gemini.push(item);
+                else grouped.other.push(item);
+            });
+
+            const getBarClass = (pct) => {
+                if (pct > 50) return 'high';
+                if (pct > 20) return 'medium';
+                return 'low';
+            };
+
+            const renderGroup = (title, emoji, items) => {
+                if (items.length === 0) return null;
+                return (
+                    <div className="quota-group">
+                        <h4 className="quota-group-title">
+                            <span>{emoji}</span> {title}
+                        </h4>
+                        <div className="quota-items">
+                            {items.map(item => {
+                                const pct = (item.remaining * 100).toFixed(1);
+                                return (
+                                    <div key={item.modelId} className="quota-item">
+                                        <div className="quota-item-header">
+                                            <span className="quota-model-name">{item.modelId}</span>
+                                            <div className="quota-reset-time">
+                                                <Icon name="Clock" size={10} />
+                                                <span>{item.resetTime}</span>
+                                            </div>
+                                        </div>
+                                        <div className="quota-progress-bar">
+                                            <div className={`quota-progress-fill ${getBarClass(pct)}`} style={{ width: `${pct}%` }}></div>
+                                        </div>
+                                        <div className="quota-progress-footer">
+                                            <span className="quota-progress-label">剩余</span>
+                                            <span className="quota-progress-value">{pct}%</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <Modal isOpen={isOpen} onClose={onClose} title="额度详情" footer={
+                    <Button variant="secondary" size="sm" onClick={onClose}>关闭</Button>
+                }>
+                    <div className="quota-header">
+                        <div className="quota-project">
+                            <span className="quota-project-label">Project ID:</span> {token.projectId}
+                        </div>
+                        <button onClick={() => loadQuotas(true)} className={`quota-refresh ${loading ? 'loading' : ''}`} title="立即刷新额度">
+                            <Icon name="RefreshCw" size={16} />
+                        </button>
+                    </div>
+
+                    {renderGroup('Claude 模型', '🤖', grouped.claude)}
+                    {renderGroup('Gemini 模型', '💎', grouped.gemini)}
+                    {renderGroup('其他模型', '🔧', grouped.other)}
+                </Modal>
+            );
+        };
+
+        // ==================== Add Token Modal ====================
+        const AddTokenModal = ({ isOpen, onClose, onAdd }) => {
+            const [activeTab, setActiveTab] = useState('oauth');
+            const [loading, setLoading] = useState(false);
+            const [manualForm, setManualForm] = useState({ accessToken: '', refreshToken: '', expiresIn: '3599' });
+            const [oauthUrl, setOauthUrl] = useState('');
+            const [oauthPort, setOauthPort] = useState(null);
+            const { addToast } = useToast();
+
+            useEffect(() => {
+                if (!oauthPort) {
+                    setOauthPort(Math.floor(Math.random() * 10000) + 50000);
+                }
+            }, []);
+
+            const getOAuthUrl = () => {
+                const port = oauthPort || Math.floor(Math.random() * 10000) + 50000;
+                const redirectUri = `http://localhost:${port}/oauth-callback`;
+                return `https://accounts.google.com/o/oauth2/v2/auth?access_type=offline&client_id=${CLIENT_ID}&prompt=consent&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(SCOPES)}&state=${Date.now()}`;
+            };
+
+            const handleManualSubmit = async (e) => {
+                e.preventDefault();
+                if (!manualForm.accessToken || !manualForm.refreshToken) {
+                    addToast('请填写完整的Token信息', 'warning');
+                    return;
+                }
+                setLoading(true);
+                try {
+                    const response = await authFetch('/admin/tokens', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            access_token: manualForm.accessToken,
+                            refresh_token: manualForm.refreshToken,
+                            expires_in: parseInt(manualForm.expiresIn) || 3599
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        addToast('Token添加成功！', 'success');
+                        onAdd();
+                        onClose();
+                        setManualForm({ accessToken: '', refreshToken: '', expiresIn: '3599' });
+                    } else {
+                        addToast(data.message || '添加失败', 'error');
+                    }
+                } catch (error) {
+                    addToast('添加失败: ' + error.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleOAuthSubmit = async (e) => {
+                e.preventDefault();
+                if (!oauthUrl) {
+                    addToast('请输入回调URL', 'warning');
+                    return;
+                }
+                setLoading(true);
+                try {
+                    const url = new URL(oauthUrl);
+                    const code = url.searchParams.get('code');
+                    const port = new URL(url.origin).port || (url.protocol === 'https:' ? 443 : 80);
+
+                    if (!code) {
+                        addToast('URL中未找到授权码', 'error');
+                        setLoading(false);
+                        return;
+                    }
+
+                    const response = await authFetch('/admin/oauth/exchange', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code, port })
+                    });
+
+                    const result = await response.json();
+                    if (result.success) {
+                        const account = result.data;
+                        const addResponse = await authFetch('/admin/tokens', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(account)
+                        });
+
+                        const addResult = await addResponse.json();
+                        if (addResult.success) {
+                            const message = result.fallbackMode
+                                ? 'Token添加成功（该账号无资格，已自动使用随机ProjectId）'
+                                : 'Token添加成功';
+                            addToast(message, result.fallbackMode ? 'warning' : 'success');
+                            onAdd();
+                            onClose();
+                            setOauthUrl('');
+                        } else {
+                            addToast('添加失败: ' + addResult.message, 'error');
+                        }
+                    } else {
+                        addToast('交换失败: ' + result.message, 'error');
+                    }
+                } catch (error) {
+                    addToast('处理失败: ' + error.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const openOAuthWindow = () => {
+                window.open(getOAuthUrl(), '_blank');
+                addToast('请在新窗口完成授权', 'info');
+            };
+
+            const copyOAuthLink = () => {
+                navigator.clipboard.writeText(getOAuthUrl()).then(() => {
+                    addToast('授权链接已复制', 'success');
+                }).catch(() => {
+                    addToast('复制失败', 'error');
+                });
+            };
+
+            return (
+                <Modal isOpen={isOpen} onClose={onClose} title="添加 Token 凭证">
+                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
+                        <button
+                            className="btn btn-ghost"
+                            style={{
+                                borderBottom: activeTab === 'oauth' ? '2px solid var(--text-primary)' : '2px solid transparent',
+                                borderRadius: 0,
+                                fontWeight: activeTab === 'oauth' ? 600 : 500,
+                                color: activeTab === 'oauth' ? 'var(--text-primary)' : 'var(--zinc-500)'
+                            }}
+                            onClick={() => setActiveTab('oauth')}
+                        >
+                            OAuth 自动获取
+                        </button>
+                        <button
+                            className="btn btn-ghost"
+                            style={{
+                                borderBottom: activeTab === 'manual' ? '2px solid var(--text-primary)' : '2px solid transparent',
+                                borderRadius: 0,
+                                fontWeight: activeTab === 'manual' ? 600 : 500,
+                                color: activeTab === 'manual' ? 'var(--text-primary)' : 'var(--zinc-500)'
+                            }}
+                            onClick={() => setActiveTab('manual')}
+                        >
+                            手动填入
+                        </button>
+                    </div>
+
+                    {activeTab === 'oauth' ? (
+                        <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div style={{
+                                background: 'var(--zinc-50)',
+                                padding: '16px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)',
+                                fontSize: '14px',
+                                color: 'var(--zinc-600)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '8px'
+                            }}>
+                                <p>1. 点击下方按钮打开 Google 授权页面。</p>
+                                <p>2. 授权完成后，复制浏览器地址栏的完整 URL。</p>
+                                <p>3. 将 URL 粘贴到下方输入框。</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <Button variant="secondary" className="flex-1" onClick={openOAuthWindow}>
+                                    <Icon name="ExternalLink" size={16} style={{ marginRight: '8px' }} /> 打开授权页面
+                                </Button>
+                                <Button variant="secondary" size="icon" onClick={copyOAuthLink} title="复制授权链接" style={{ width: '36px' }}>
+                                    <Icon name="Copy" size={16} />
+                                </Button>
+                            </div>
+                            <form onSubmit={handleOAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <Input label="回调 URL" placeholder="http://localhost:xxxxx/oauth-callback?code=..." value={oauthUrl} onChange={(e) => setOauthUrl(e.target.value)} />
+                                <Button type="submit" className="w-full" loading={loading}>解析并添加</Button>
+                            </form>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleManualSubmit} className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <Input label="Access Token" placeholder="必填" value={manualForm.accessToken} onChange={(e) => setManualForm({ ...manualForm, accessToken: e.target.value })} />
+                            <Input label="Refresh Token" placeholder="必填" value={manualForm.refreshToken} onChange={(e) => setManualForm({ ...manualForm, refreshToken: e.target.value })} />
+                            <Input label="过期时间 (秒)" type="number" value={manualForm.expiresIn} onChange={(e) => setManualForm({ ...manualForm, expiresIn: e.target.value })} help="默认 3599 秒（约1小时）" />
+                            <Button type="submit" className="w-full" loading={loading}>保存凭证</Button>
+                        </form>
+                    )}
+                </Modal>
+            );
+        };
+
+        // ==================== Dashboard (Token 管理) ====================
+        const Dashboard = () => {
+            const [tokens, setTokens] = useState([]);
+            const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+            const [quotaModalToken, setQuotaModalToken] = useState(null);
+            const [detailModalToken, setDetailModalToken] = useState(null);
+            const [confirmModal, setConfirmModal] = useState({ isOpen: false });
+            const [isRefreshing, setIsRefreshing] = useState(false);
+            const [hideSensitive, setHideSensitive] = useState(true);
+            const { addToast } = useToast();
+
+            useEffect(() => {
+                loadTokens();
+            }, []);
+
+            const loadTokens = async () => {
+                try {
+                    const response = await authFetch('/admin/tokens');
+                    const data = await response.json();
+                    if (data.success) {
+                        setTokens(data.data);
+                    } else {
+                        addToast('加载失败: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    if (error.message !== 'Unauthorized') {
+                        addToast('加载失败: ' + error.message, 'error');
+                    }
+                }
+            };
+
+            const handleToggle = (refreshToken, currentEnable) => {
+                const newEnable = !currentEnable;
+                const action = newEnable ? '启用' : '禁用';
+                setConfirmModal({
+                    isOpen: true,
+                    title: `${action}确认`,
+                    message: `确定要${action}这个Token吗？`,
+                    action: async () => {
+                        try {
+                            const response = await authFetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ enable: newEnable })
+                            });
+
+                            const data = await response.json();
+                            if (data.success) {
+                                addToast(`已${action}`, 'success');
+                                loadTokens();
+                            } else {
+                                addToast(data.message || '操作失败', 'error');
+                            }
+                        } catch (error) {
+                            addToast('操作失败: ' + error.message, 'error');
+                        }
+                        setConfirmModal({ isOpen: false });
+                    }
+                });
+            };
+
+            const handleDelete = (refreshToken) => {
+                setConfirmModal({
+                    isOpen: true,
+                    title: '⚠️ 删除确认',
+                    message: '删除后无法恢复，确定要删除这个Token吗？',
+                    action: async () => {
+                        try {
+                            const response = await authFetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
+                                method: 'DELETE'
+                            });
+
+                            const data = await response.json();
+                            if (data.success) {
+                                addToast('已删除', 'success');
+                                loadTokens();
+                            } else {
+                                addToast(data.message || '删除失败', 'error');
+                            }
+                        } catch (error) {
+                            addToast('删除失败: ' + error.message, 'error');
+                        }
+                        setConfirmModal({ isOpen: false });
+                    }
+                });
+            };
+
+            const handleRefresh = () => {
+                setIsRefreshing(true);
+                loadTokens().finally(() => {
+                    setIsRefreshing(false);
+                    addToast('Token列表已刷新', 'success');
+                });
+            };
+
+            const handleSaveTokenDetail = async (refreshToken, newData) => {
+                try {
+                    const response = await authFetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newData)
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        addToast('Token 信息已更新', 'success');
+                        loadTokens();
+                    } else {
+                        throw new Error(data.message || '保存失败');
+                    }
+                } catch (error) {
+                    throw error;
+                }
+            };
+
+            return (
+                <div className="page-container animate-fade-in">
+                    {/* Stats */}
+                    <div className="stats-grid">
+                        <Card className="stat-card">
+                            <div className="stat-info">
+                                <div className="stat-label">总 Token 数</div>
+                                <div className="stat-value">{tokens.length}</div>
+                            </div>
+                            <div className="stat-icon">
+                                <Icon name="LayoutGrid" />
+                            </div>
+                        </Card>
+                        <Card className="stat-card success">
+                            <div className="stat-info">
+                                <div className="stat-label">已启用</div>
+                                <div className="stat-value">{tokens.filter(t => t.enable).length}</div>
+                            </div>
+                            <div className="stat-icon">
+                                <Icon name="Check" />
+                            </div>
+                        </Card>
+                        <Card className="stat-card">
+                            <div className="stat-info">
+                                <div className="stat-label">已禁用</div>
+                                <div className="stat-value">{tokens.filter(t => !t.enable).length}</div>
+                            </div>
+                            <div className="stat-icon">
+                                <Icon name="X" />
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)' }}>凭证列表</h2>
+                        <div className="flex gap-2">
+                            <Button variant="secondary" onClick={() => setHideSensitive(!hideSensitive)} title={hideSensitive ? "显示敏感信息" : "隐藏敏感信息"}>
+                                <Icon name={hideSensitive ? "EyeOff" : "Eye"} size={16} />
+                            </Button>
+                            <Button variant="secondary" onClick={handleRefresh} disabled={isRefreshing}>
+                                <Icon name="RefreshCw" size={16} className={isRefreshing ? "loading" : ""} />
+                            </Button>
+                            <Button onClick={() => setIsAddModalOpen(true)}>
+                                <Icon name="Plus" size={16} style={{ marginRight: '8px' }} /> 添加
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Token Table */}
+                    <Card style={{ overflow: 'auto' }}>
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th style={{ minWidth: '160px' }}>账号信息 (Project ID)</th>
+                                    <th style={{ minWidth: '140px' }}>Token 详情</th>
+                                    <th className="text-center">状态</th>
+                                    <th className="text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {tokens.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="4" className="text-center" style={{ padding: '48px 24px' }}>
+                                            <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
+                                            <div style={{ color: 'var(--zinc-400)' }}>暂无 Token，点击上方「添加」按钮添加</div>
+                                        </td>
+                                    </tr>
+                                ) : tokens.map((token, idx) => (
+                                    <tr key={idx}>
+                                        <td>
+                                            <div className={`font-semibold ${hideSensitive ? 'blur-text' : ''}`} style={{ color: 'var(--text-primary)' }}>
+                                                {token.projectId || 'N/A'}
+                                            </div>
+                                            <div className={`${hideSensitive ? 'blur-text' : ''}`} style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
+                                                {token.email || "N/A"}
+                                            </div>
+                                        </td>
+                                        <td className="font-mono" style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
+                                            <div className={hideSensitive ? 'blur-text' : ''}>Access: {token.access_token_suffix}</div>
+                                            <div>Refresh: {token.refresh_token.substring(0, 8)}...</div>
+                                        </td>
+                                        <td className="text-center">
+                                            <span className={`status-badge ${token.enable ? 'success' : 'disabled'}`}>
+                                                <span className="status-dot"></span>
+                                                {token.enable ? '启用' : '禁用'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="table-actions">
+                                                <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
+                                                <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
+                                                <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.refresh_token, token.enable)}>
+                                                    {token.enable ? "禁用" : "启用"}
+                                                </Button>
+                                                <Button variant="danger" size="sm" onClick={() => handleDelete(token.refresh_token)} title="删除">
+                                                    <Icon name="Trash2" size={14} />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </Card>
+
+                    {/* Modals */}
+                    <AddTokenModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={loadTokens} />
+                    <QuotaModal isOpen={!!quotaModalToken} token={quotaModalToken} onClose={() => setQuotaModalToken(null)} />
+                    <TokenDetailModal
+                        isOpen={!!detailModalToken}
+                        token={detailModalToken}
+                        onClose={() => setDetailModalToken(null)}
+                        onSave={handleSaveTokenDetail}
+                    />
+                    <ConfirmModal
+                        isOpen={confirmModal.isOpen}
+                        onClose={() => setConfirmModal({ isOpen: false })}
+                        onConfirm={confirmModal.action}
+                        title={confirmModal.title}
+                        message={confirmModal.message}
+                    />
+                </div>
+            );
+        };
+
+        // ==================== Settings (配置管理) ====================
+        const Settings = () => {
+            const [config, setConfig] = useState({});
+            const [isSaving, setIsSaving] = useState(false);
+            const [fontSize, setFontSize] = useState(() => {
+                return parseInt(localStorage.getItem('fontSize')) || 16;
+            });
+            const { addToast } = useToast();
+
+            useEffect(() => {
+                loadConfig();
+            }, []);
+
+            useEffect(() => {
+                document.documentElement.style.fontSize = `${fontSize}px`;
+                localStorage.setItem('fontSize', fontSize);
+            }, [fontSize]);
+
+            const loadConfig = async () => {
+                try {
+                    const response = await authFetch('/admin/config');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // 合并 env 和 json 配置
+                        const merged = { ...data.data.env, ...data.data.json };
+                        setConfig(merged);
+                    } else {
+                        addToast('加载配置失败: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    addToast('加载配置失败: ' + error.message, 'error');
+                }
+            };
+
+            const handleSave = async () => {
+                setIsSaving(true);
+                try {
+                    // 分离 env 和 json 配置
+                    const envKeys = ['PORT', 'HOST', 'MAX_REQUEST_SIZE', 'API_KEY', 'SKIP_PROJECT_ID_FETCH', 'USE_NATIVE_AXIOS', 'IMAGE_BASE_URL', 'PROXY', 'DEFAULT_TEMPERATURE', 'DEFAULT_TOP_P', 'DEFAULT_TOP_K', 'DEFAULT_MAX_TOKENS', 'DEFAULT_THINKING_BUDGET', 'USE_CONTEXT_SYSTEM_PROMPT', 'SYSTEM_INSTRUCTION', 'PASS_SIGNATURE_TO_CLIENT', 'TIMEOUT', 'RETRY_TIMES', 'HEARTBEAT_INTERVAL', 'MEMORY_THRESHOLD'];
+
+                    const envConfig = {};
+                    const jsonConfig = {};
+
+                    Object.keys(config).forEach(key => {
+                        if (envKeys.includes(key)) {
+                            envConfig[key] = config[key];
+                        } else {
+                            jsonConfig[key] = config[key];
+                        }
+                    });
+
+                    const response = await authFetch('/admin/config', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ env: envConfig, json: jsonConfig })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        addToast('配置已保存并生效', 'success');
+                    } else {
+                        addToast('保存配置失败: ' + data.message, 'error');
+                    }
+                } catch (error) {
+                    addToast('保存配置失败: ' + error.message, 'error');
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+            const rotationStatusText = {
+                'round_robin': '均衡负载',
+                'quota_exhausted': '额度耗尽切换',
+                'request_count': `自定义次数 (每 ${config.ROTATION_REQUEST_COUNT || config.requestCount || 10} 次)`
+            }[config.ROTATION_STRATEGY || config.strategy || 'round_robin'] || (config.ROTATION_STRATEGY || config.strategy || 'round_robin');
+
+            return (
+                <div className="page-container animate-fade-in" style={{ maxWidth: '1024px' }}>
+                    <div className="mb-6">
+                        <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)' }}>系统设置</h2>
+                        <p style={{ fontSize: '14px', color: 'var(--zinc-500)' }}>修改 config.json 与服务器参数</p>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                        {/* Server Config */}
+                        <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Icon name="Zap" size={16} /> 服务器配置 (Server)
+                            </h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                                <Input label="端口 (Port)" type="number" value={config.PORT || ''} onChange={(e) => setConfig({ ...config, PORT: e.target.value })} />
+                                <Input label="Host" value={config.HOST || ''} onChange={(e) => setConfig({ ...config, HOST: e.target.value })} />
+                                <Input label="最大请求大小" value={config.MAX_REQUEST_SIZE || ''} onChange={(e) => setConfig({ ...config, MAX_REQUEST_SIZE: e.target.value })} />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                                <Input label="心跳间隔 (ms)" type="number" value={config.HEARTBEAT_INTERVAL || ''} onChange={(e) => setConfig({ ...config, HEARTBEAT_INTERVAL: e.target.value })} help="SSE心跳间隔，防止CF超时断连" />
+                                <Input label="内存阈值 (MB)" type="number" value={config.MEMORY_THRESHOLD || ''} onChange={(e) => setConfig({ ...config, MEMORY_THRESHOLD: e.target.value })} help="超过此值触发GC清理" />
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                                <Input label="图片访问链接" value={config.IMAGE_BASE_URL || ''} onChange={(e) => setConfig({ ...config, IMAGE_BASE_URL: e.target.value })} placeholder="https://your-domain.com" />
+                                <Input label="代理地址" value={config.PROXY || ''} onChange={(e) => setConfig({ ...config, PROXY: e.target.value })} placeholder="http://127.0.0.1:7897" />
+                            </div>
+                        </section>
+
+                        {/* Model Defaults */}
+                        <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Icon name="Settings" size={16} /> 模型默认参数 (Defaults)
+                            </h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '16px' }}>
+                                <Input label="Temperature" type="number" step="0.1" value={config.DEFAULT_TEMPERATURE || ''} onChange={(e) => setConfig({ ...config, DEFAULT_TEMPERATURE: e.target.value })} />
+                                <Input label="Top P" type="number" step="0.01" value={config.DEFAULT_TOP_P || ''} onChange={(e) => setConfig({ ...config, DEFAULT_TOP_P: e.target.value })} />
+                                <Input label="Top K" type="number" value={config.DEFAULT_TOP_K || ''} onChange={(e) => setConfig({ ...config, DEFAULT_TOP_K: e.target.value })} />
+                                <Input label="Max Tokens" type="number" value={config.DEFAULT_MAX_TOKENS || ''} onChange={(e) => setConfig({ ...config, DEFAULT_MAX_TOKENS: e.target.value })} />
+                            </div>
+                            <Input label="思考预算 (Thinking Budget)" type="number" value={config.DEFAULT_THINKING_BUDGET || ''} onChange={(e) => setConfig({ ...config, DEFAULT_THINKING_BUDGET: e.target.value })} help="思考模型的思考token预算，影响推理深度" />
+                        </section>
+
+                        {/* Rotation & Performance */}
+                        <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Icon name="BarChart3" size={16} /> 轮询与性能 (Rotation)
+                            </h3>
+                            <div style={{ background: 'var(--amber-50)', padding: '12px', borderRadius: '8px', border: '1px solid var(--amber-200)', fontSize: '12px', color: 'var(--amber-800)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span>当前状态: <span style={{ fontWeight: 600 }}>{rotationStatusText}</span> | 索引: 0</span>
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                                <Select
+                                    label="策略模式"
+                                    value={config.ROTATION_STRATEGY || config.strategy || 'round_robin'}
+                                    onChange={(e) => setConfig({ ...config, ROTATION_STRATEGY: e.target.value, strategy: e.target.value })}
+                                    options={[
+                                        { value: 'round_robin', label: '均衡负载 (Round Robin)' },
+                                        { value: 'quota_exhausted', label: '额度耗尽切换' },
+                                        { value: 'request_count', label: '自定义次数' }
+                                    ]}
+                                    help="选择 Token 的轮询切换策略"
+                                />
+                                {(config.ROTATION_STRATEGY === 'request_count' || config.strategy === 'request_count') && (
+                                    <Input
+                                        label="每Token请求次数"
+                                        type="number"
+                                        min="1"
+                                        value={config.ROTATION_REQUEST_COUNT || config.requestCount || ''}
+                                        onChange={(e) => setConfig({ ...config, ROTATION_REQUEST_COUNT: e.target.value, requestCount: e.target.value })}
+                                    />
+                                )}
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', paddingTop: '8px' }}>
+                                <Toggle
+                                    label="透传签名 (Pass Signature)"
+                                    checked={config.PASS_SIGNATURE_TO_CLIENT || false}
+                                    onChange={(val) => setConfig({ ...config, PASS_SIGNATURE_TO_CLIENT: val })}
+                                    help="将响应中的 thoughtSignature 透传到客户端"
+                                />
+                                <Toggle
+                                    label="上下文 System (Context System)"
+                                    checked={config.USE_CONTEXT_SYSTEM_PROMPT || false}
+                                    onChange={(val) => setConfig({ ...config, USE_CONTEXT_SYSTEM_PROMPT: val })}
+                                    help="合并开头连续的 system 消息到 SystemInstruction"
+                                />
+                            </div>
+                        </section>
+
+                        {/* Other */}
+                        <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Icon name="Settings" size={16} /> 其他设置 (Other)
+                            </h3>
+                            <div style={{ background: 'var(--bg-card)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                                    <Input label="请求超时 (ms)" type="number" value={config.TIMEOUT || ''} onChange={(e) => setConfig({ ...config, TIMEOUT: e.target.value })} />
+                                    <Input label="429重试次数" type="number" value={config.RETRY_TIMES || ''} onChange={(e) => setConfig({ ...config, RETRY_TIMES: e.target.value })} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', paddingTop: '8px' }}>
+                                    <Toggle
+                                        label="跳过 ProjectId 验证"
+                                        checked={config.SKIP_PROJECT_ID_FETCH || false}
+                                        onChange={(val) => setConfig({ ...config, SKIP_PROJECT_ID_FETCH: val })}
+                                        help="开启后将随机生成 Project ID"
+                                    />
+                                    <Toggle
+                                        label="原生 Axios"
+                                        checked={config.USE_NATIVE_AXIOS || false}
+                                        onChange={(val) => setConfig({ ...config, USE_NATIVE_AXIOS: val })}
+                                        help="使用原生 axios 而非 TLS 指纹请求器"
+                                    />
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Security & System */}
+                        <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>安全与环境变量 (Env / Security)</h3>
+                            <Input label="API Key" type="text" value={config.API_KEY || ''} onChange={(e) => setConfig({ ...config, API_KEY: e.target.value })} help="客户端调用 API 时所需的 Bearer Token" />
+                            <div className="form-group">
+                                <label className="form-label">System Instruction</label>
+                                <textarea className="form-textarea" rows={3} value={config.SYSTEM_INSTRUCTION || ''} onChange={(e) => setConfig({ ...config, SYSTEM_INSTRUCTION: e.target.value })} placeholder="输入系统提示词..."></textarea>
+                            </div>
+                        </section>
+
+                        {/* Interface Settings */}
+                        <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>界面设置 (Interface)</h3>
+                            <div className="form-group">
+                                <label className="form-label">界面字体大小 (px)</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '8px 12px' }}>
+                                    <input
+                                        type="range"
+                                        min="12"
+                                        max="24"
+                                        step="1"
+                                        value={fontSize}
+                                        onChange={(e) => setFontSize(parseInt(e.target.value))}
+                                        style={{ flex: 1, height: '6px', background: 'var(--zinc-200)', borderRadius: '8px', cursor: 'pointer' }}
+                                    />
+                                    <input
+                                        type="number"
+                                        min="12"
+                                        max="24"
+                                        value={fontSize}
+                                        onChange={(e) => setFontSize(Math.max(12, Math.min(24, parseInt(e.target.value) || 16)))}
+                                        style={{ width: '48px', textAlign: 'center', background: 'transparent', border: 'none', fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <p className="form-help">调整全局字体大小，默认 16px</p>
+                            </div>
+                        </section>
+
+                        <div style={{ paddingTop: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                            <Button size="lg" onClick={handleSave} loading={isSaving}>保存配置</Button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==================== Login ====================
+        const Login = ({ onLogin, darkMode, toggleDarkMode }) => {
+            const [loading, setLoading] = useState(false);
+            const [username, setUsername] = useState('');
+            const [password, setPassword] = useState('');
+            const { addToast } = useToast();
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!username || !password) {
+                    addToast('请填写用户名和密码', 'warning');
+                    return;
+                }
+
+                setLoading(true);
+                try {
+                    const response = await fetch('/admin/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        localStorage.setItem('authToken', data.token);
+                        addToast('登录成功！', 'success');
+                        onLogin();
+                    } else {
+                        addToast(data.message || '用户名或密码错误', 'error');
+                    }
+                } catch (error) {
+                    addToast('登录失败: ' + error.message, 'error');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="login-container">
+                    <div className="login-theme-toggle">
+                        <Button variant="secondary" onClick={toggleDarkMode} size="icon" style={{ width: '40px', height: '40px' }}>
+                            {darkMode ? <Icon name="Sun" size={20} /> : <Icon name="Moon" size={20} />}
+                        </Button>
+                    </div>
+                    <div className="login-card">
+                        <div className="login-logo">
+                            <div className="login-logo-icon">
+                                <Icon name="Zap" size={24} />
+                            </div>
+                        </div>
+                        <h1 className="login-title">Antigravity Console</h1>
+                        <p className="login-subtitle">管理员登录</p>
+                        <form onSubmit={handleSubmit} className="login-form">
+                            <Input label="Username" placeholder="admin" value={username} onChange={(e) => setUsername(e.target.value)} />
+                            <Input label="Password" type="password" placeholder="••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                            <Button type="submit" size="lg" className="w-full" loading={loading}>登 录</Button>
+                        </form>
+                        <p className="login-hint">请使用管理员账户登录</p>
+                    </div>
+                </div>
+            );
+        };
+
+        // ==================== Main App ====================
+        const App = () => {
+            const [view, setView] = useState('login');
+            const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+            const [darkMode, setDarkMode] = useState(() => {
+                return localStorage.getItem('darkMode') === 'true';
+            });
+
+            useEffect(() => {
+                // 检查是否已登录
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    setView('dashboard');
+                }
+            }, []);
+
+            useEffect(() => {
+                if (darkMode) {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('darkMode', 'true');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('darkMode', 'false');
+                }
+            }, [darkMode]);
+
+            const toggleDarkMode = () => setDarkMode(!darkMode);
+
+            const handleLogout = () => {
+                localStorage.removeItem('authToken');
+                setView('login');
+                setShowLogoutConfirm(false);
+            };
+
+            if (view === 'login') return <Login onLogin={() => setView('dashboard')} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
+
+            return (
+                <div className="app-container">
+                    {/* Sidebar */}
+                    <aside className="sidebar">
+                        <div className="sidebar-header">
+                            <div className="sidebar-logo">
+                                <Icon name="Zap" size={16} />
+                            </div>
+                            <span className="sidebar-title">Antigravity</span>
+                        </div>
+                        <nav className="sidebar-nav">
+                            <button onClick={() => setView('dashboard')} className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}>
+                                <Icon name="LayoutGrid" size={18} /> Token 管理
+                            </button>
+                            <button onClick={() => setView('settings')} className={`nav-item ${view === 'settings' ? 'active' : ''}`}>
+                                <Icon name="Settings" size={18} /> 系统设置
+                            </button>
+                        </nav>
+                        <div className="sidebar-footer">
+                            <button onClick={toggleDarkMode} className="nav-item">
+                                {darkMode ? <Icon name="Sun" size={18} /> : <Icon name="Moon" size={18} />}
+                                {darkMode ? '切换亮色模式' : '切换暗色模式'}
+                            </button>
+                            <button onClick={() => setShowLogoutConfirm(true)} className="nav-item logout-btn">
+                                <Icon name="LogOut" size={18} /> 退出登录
+                            </button>
+                        </div>
+                    </aside>
+
+                    {/* Main Content */}
+                    <main className="main-content">
+                        {/* Mobile Header */}
+                        <div className="mobile-header">
+                            <div className="mobile-header-title">
+                                <Icon name="Zap" size={18} /> Antigravity
+                            </div>
+                            <div className="mobile-header-actions">
+                                <button onClick={toggleDarkMode} className="btn btn-ghost btn-icon">
+                                    {darkMode ? <Icon name="Sun" size={18} /> : <Icon name="Moon" size={18} />}
+                                </button>
+                                <button onClick={() => setView(view === 'dashboard' ? 'settings' : 'dashboard')} className="btn btn-ghost btn-icon">
+                                    <Icon name="Settings" size={18} />
+                                </button>
+                            </div>
+                        </div>
+                        <div className="content-wrapper">
+                            {view === 'dashboard' && <Dashboard />}
+                            {view === 'settings' && <Settings />}
+                        </div>
+                    </main>
+
+                    {/* Logout Confirm */}
+                    <ConfirmModal
+                        isOpen={showLogoutConfirm}
+                        onClose={() => setShowLogoutConfirm(false)}
+                        onConfirm={handleLogout}
+                        title="退出确认"
+                        message="确定要退出登录吗？"
+                    />
+                </div>
+            );
+        };
+
+        // ==================== Render ====================
+        ReactDOM.createRoot(document.getElementById('root')).render(
+            <ToastProvider>
+                <App />
+            </ToastProvider>
+        );
+    </script>
+</body>
+</html>

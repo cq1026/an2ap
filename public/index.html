@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Token 管理</title>
+    <!-- 版本切换：检查用户偏好并自动跳转 -->
+    <script>
+        (function() {
+            var preferred = localStorage.getItem('uiVersion');
+            if (preferred === 'new') {
+                window.location.href = '/index-new.html';
+                return;
+            }
+        })();
+    </script>
     <!-- 防止页面闪烁：在渲染前根据登录状态和Tab状态设置初始显示 -->
     <script>
         (function() {
@@ -41,9 +51,51 @@ html.tab-settings .tab[data-tab="tokens"] {
     background: transparent !important;
     color: var(--text-light, #888) !important; 
 }
-html.tab-settings .tab[data-tab="settings"] { 
-    background: var(--primary, #4f46e5) !important; 
-    color: white !important; 
+html.tab-settings .tab[data-tab="settings"] {
+    background: var(--primary, #4f46e5) !important;
+    color: white !important;
+}
+/* 版本切换按钮 */
+#versionSwitcher {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 10000;
+}
+#versionSwitcher button {
+    padding: 8px 16px;
+    background: white;
+    color: #18181b;
+    border: 2px solid #e4e4e7;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#versionSwitcher button:hover {
+    background: #f4f4f5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-color: #d4d4d8;
+}
+#versionSwitcher button:active {
+    transform: translateY(0);
+}
+@media (prefers-color-scheme: dark) {
+    #versionSwitcher button {
+        background: #27272a;
+        color: #fafafa;
+        border-color: #3f3f46;
+    }
+    #versionSwitcher button:hover {
+        background: #3f3f46;
+        border-color: #52525b;
+    }
 }
     </style>
     <!-- 主样式表 - 优先加载 -->
@@ -61,6 +113,14 @@ html.tab-settings .tab[data-tab="settings"] {
     </noscript>
 </head>
 <body>
+    <!-- 版本切换按钮 -->
+    <div id="versionSwitcher">
+        <button onclick="switchToNewVersion()">
+            <span>🎨</span>
+            <span>切换到新版界面</span>
+        </button>
+    </div>
+
     <div class="container">
         <!-- 登录表单 -->
         <div id="loginForm" class="login-form">
@@ -299,5 +359,13 @@ html.tab-settings .tab[data-tab="settings"] {
     <script src="js/tokens.js" defer></script>
     <script src="js/config.js" defer></script>
     <script src="js/main.js" defer></script>
+
+    <!-- 版本切换函数 -->
+    <script>
+        function switchToNewVersion() {
+            localStorage.setItem('uiVersion', 'new');
+            window.location.href = '/index-new.html';
+        }
+    </script>
 </body>
 </html>
