@@ -341,8 +341,8 @@ body {
 }
 
 .btn-icon {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
 }
 
@@ -923,7 +923,7 @@ input[type="number"] {
 }
 
 .modal-header {
-  padding: 24px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
@@ -1392,7 +1392,7 @@ input[type="number"] {
   position: fixed;
   top: 16px;
   right: 16px;
-  z-index: 10000;
+  z-index: 50;
 }
 
 #versionSwitcher button {
