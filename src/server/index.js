@@ -80,6 +80,15 @@ app.use((req, res, next) => {
         return res.status(401).json({ error: 'Invalid API Key' });
       }
     }
+  } else if (req.path.startsWith('/v1beta/')) {
+    const apiKey = config.security?.apiKey;
+    if (apiKey) {
+      const providedKey = req.query.key || req.headers['x-goog-api-key'];
+      if (providedKey !== apiKey) {
+        logger.warn(`API Key 验证失败: ${req.method} ${req.path} (提供的Key: ${providedKey ? providedKey.substring(0, 10) + '...' : '无'})`);
+        return res.status(401).json({ error: 'Invalid API Key' });
+      }
+    }
   }
   next();
 });
