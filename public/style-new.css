@@ -1618,6 +1618,10 @@ input[type="number"] {
   max-width: 384px;
 }
 
+.max-w-md {
+  max-width: 448px;
+}
+
 .max-w-lg {
   max-width: 512px;
 }
