@@ -754,6 +754,10 @@ input[type="number"] {
   color: var(--zinc-500);
   padding: 8px;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 .dark .stat-icon {
@@ -1398,6 +1402,10 @@ input[type="number"] {
   color: white;
   padding: 12px;
   border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 .dark .login-logo-icon {
