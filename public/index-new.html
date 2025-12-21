@@ -205,16 +205,30 @@
             </div>
         );
 
-        const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => (
-            <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="max-w-sm" footer={
-                <>
-                    <Button variant="secondary" size="sm" onClick={onClose}>取消</Button>
-                    <Button variant="danger" size="sm" onClick={onConfirm}>确定</Button>
-                </>
-            }>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>{message}</p>
-            </Modal>
-        );
+        // ==================== Confirm Modal ====================
+        const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
+            if (!isOpen) return null;
+            return ReactDOM.createPortal(
+                React.createElement('div', {
+                    className: 'modal-overlay animate-fade-in',
+                    style: { zIndex: 100 }
+                },
+                    React.createElement('div', {
+                        className: 'confirm-modal animate-slide-up'
+                    },
+                        React.createElement('div', { className: 'confirm-modal-content' },
+                            React.createElement('h3', { className: 'confirm-modal-title' }, title),
+                            React.createElement('p', { className: 'confirm-modal-message' }, message)
+                        ),
+                        React.createElement('div', { className: 'confirm-modal-footer' },
+                            React.createElement(Button, { variant: 'secondary', size: 'sm', onClick: onClose }, '取消'),
+                            React.createElement(Button, { variant: 'danger', size: 'sm', onClick: onConfirm }, '确定')
+                        )
+                    )
+                ),
+                document.body
+            );
+        };
 
         // ==================== Token Detail Modal ====================
         const TokenDetailModal = ({ isOpen, onClose, token, onSave }) => {
@@ -413,7 +427,7 @@
             };
 
             return (
-                <Modal isOpen={isOpen} onClose={onClose} title="额度详情" footer={
+                <Modal isOpen={isOpen} onClose={onClose} title="额度详情" maxWidth="max-w-md" footer={
                     <Button variant="secondary" size="sm" onClick={onClose}>关闭</Button>
                 }>
                     <div className="quota-header">
@@ -699,7 +713,7 @@
             const handleDelete = (refreshToken) => {
                 setConfirmModal({
                     isOpen: true,
-                    title: '⚠️ 删除确认',
+                    title: '删除确认',
                     message: '删除后无法恢复，确定要删除这个Token吗？',
                     action: async () => {
                         try {
@@ -800,8 +814,9 @@
                     </div>
 
                     {/* Token Table */}
-                    <Card style={{ overflow: 'auto' }}>
-                        <table className="data-table">
+                    <Card>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table className="data-table">
                             <thead>
                                 <tr>
                                     <th style={{ minWidth: '160px' }}>账号信息 (Project ID)</th>
@@ -854,6 +869,7 @@
                                 ))}
                             </tbody>
                         </table>
+                        </div>
                     </Card>
 
                     {/* Modals */}

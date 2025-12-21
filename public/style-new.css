@@ -996,7 +996,48 @@ input[type="number"] {
   background: rgba(39, 39, 42, 0.5);
 }
 
-/* ==================== 10. Toast 通知 ==================== */
+/* ==================== 10. 确认弹窗样式 ==================== */
+.confirm-modal {
+  background: var(--bg-card);
+  border-radius: 12px;
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 384px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.confirm-modal-content {
+  padding: 24px;
+}
+
+.confirm-modal-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.confirm-modal-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.confirm-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  background: var(--zinc-50);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dark .confirm-modal-footer {
+  background: rgba(39, 39, 42, 0.5);
+}
+
+/* ==================== 11. Toast 通知 ==================== */
 .toast-container {
   position: fixed;
   top: 16px;
@@ -1463,7 +1504,11 @@ input[type="number"] {
   .modal-container {
     max-width: 100%;
     max-height: 100%;
-    border-radius: 0;
+  }
+
+  .confirm-modal {
+    max-width: 100%;
+    border-radius: 12px;
   }
 
   .data-table {
