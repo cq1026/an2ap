@@ -124,7 +124,23 @@ export function extractSystemInstruction(openaiMessages) {
 // ==================== 图片请求准备 ====================
 export function prepareImageRequest(requestBody) {
   if (!requestBody || !requestBody.request) return requestBody;
-  requestBody.request.generationConfig = { candidateCount: 1 };
+  let imageSize = "1K";
+  if (requestBody.model.includes('4K')){
+    imageSize = "4K";
+  } else if (requestBody.model.includes('2K')){
+    imageSize = "2K";
+  } else {
+    imageSize = "1K";
+  }
+  if (imageSize !== "1K"){
+    requestBody.model = requestBody.model.slice(0, -3);
+  }
+  requestBody.request.generationConfig = { 
+    candidateCount: 1,
+    imageConfig: {
+      imageSize: imageSize
+    }
+  };
   requestBody.requestType = 'image_gen';
   delete requestBody.request.systemInstruction;
   delete requestBody.request.tools;

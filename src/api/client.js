@@ -43,6 +43,8 @@ const DEFAULT_MODELS = [
   'gemini-3-pro-high',
   'gemini-2.5-flash-lite',
   'gemini-3-pro-image',
+  'gemini-3-pro-image-4K',
+  'gemini-3-pro-image-2K',
   'gemini-2.5-flash-thinking',
   'gemini-2.5-pro',
   'gemini-2.5-flash',

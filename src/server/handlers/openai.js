@@ -65,7 +65,7 @@ export const handleOpenAIRequest = async (req, res) => {
     if (isImageModel) {
       prepareImageRequest(requestBody);
     }
-    
+    //console.log(JSON.stringify(requestBody,null,2));
     const { id, created } = createResponseMeta();
     const maxRetries = Number(config.retryTimes || 0);
     const safeRetries = maxRetries > 0 ? Math.floor(maxRetries) : 0;
