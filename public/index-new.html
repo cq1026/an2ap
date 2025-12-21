@@ -31,23 +31,7 @@
     <link rel="stylesheet" href="style-new.css">
 </head>
 <body>
-    <!-- 版本切换按钮 -->
-    <div id="versionSwitcher">
-        <button onclick="switchToOldVersion()">
-            <span>📋</span>
-            <span>切换到经典版</span>
-        </button>
-    </div>
-
     <div id="root"></div>
-
-    <script>
-        // 版本切换函数
-        function switchToOldVersion() {
-            localStorage.setItem('uiVersion', 'old');
-            window.location.href = '/index.html';
-        }
-    </script>
 
     <script type="text/babel">
         const { useState, useEffect, createContext, useContext } = React;
@@ -174,8 +158,8 @@
             if (!isOpen) return null;
 
             return ReactDOM.createPortal(
-                <div className="modal-overlay animate-fade-in" onClick={onClose}>
-                    <div className={`modal-container ${maxWidth} animate-slide-up`} onClick={(e) => e.stopPropagation()}>
+                <div className="modal-overlay animate-fade-in">
+                    <div className={`modal-container ${maxWidth} animate-slide-up`}>
                         <div className="modal-header">
                             <h3 className="modal-title">{title}</h3>
                             <button onClick={onClose} className="modal-close">
@@ -410,7 +394,7 @@
                                             <span className="quota-model-name">{item.modelId}</span>
                                             <div className="quota-reset-time">
                                                 <Icon name="Clock" size={10} />
-                                                <span>{item.resetTime}</span>
+                                                <span>{typeof item.resetTime === 'number' ? formatTime(item.resetTime) : item.resetTime}</span>
                                             </div>
                                         </div>
                                         <div className="quota-progress-bar">
@@ -1319,6 +1303,12 @@
                             </button>
                         </nav>
                         <div className="sidebar-footer">
+                            <button onClick={() => {
+                                localStorage.setItem('uiVersion', 'old');
+                                window.location.href = '/index.html';
+                            }} className="nav-item">
+                                <span style={{ fontSize: '18px' }}>📋</span> 切换到经典版
+                            </button>
                             <button onClick={toggleDarkMode} className="nav-item">
                                 {darkMode ? <Icon name="Sun" size={18} /> : <Icon name="Moon" size={18} />}
                                 {darkMode ? '切换亮色模式' : '切换暗色模式'}
