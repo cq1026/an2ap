@@ -923,7 +923,7 @@ input[type="number"] {
   box-shadow: var(--shadow-xl);
   width: 100%;
   max-width: 512px;
-  max-height: 90vh;
+  max-height: min(846px, 90vh);
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border-color);
