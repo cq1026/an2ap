@@ -108,9 +108,9 @@ export const writeStreamData = (res, data) => {
  * 结束流式响应
  * @param {Response} res - Express响应对象
  */
-export const endStream = (res) => {
+export const endStream = (res, isWriteDone = true) => {
   if (res.writableEnded) return;
-  res.write(SSE_DONE);
+  if (isWriteDone) res.write(SSE_DONE);
   res.end();
 };
 

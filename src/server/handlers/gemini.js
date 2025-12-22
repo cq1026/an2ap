@@ -193,7 +193,7 @@ export const handleGeminiRequest = async (req, res, modelName, isStream) => {
           const chunk = createGeminiResponse(content, null, null, null, 'STOP', usage);
           writeStreamData(res, chunk);
           clearInterval(heartbeatTimer);
-          endStream(res);
+          endStream(res, false);
           return;
         }
         
