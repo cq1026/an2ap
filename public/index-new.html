@@ -948,8 +948,8 @@
                             USE_NATIVE_AXIOS: json.other?.useNativeAxios,
                             USE_CONTEXT_SYSTEM_PROMPT: json.other?.useContextSystemPrompt,
                             PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient,
-                            USE_CACHED_SIGNATURE: json.other?.useCachedSignature,
-                            USE_FALLBACK_SIGNATURE: json.other?.useFallbackSignature
+                            USE_CACHED_SIGNATURE: json.other?.useCachedSignature !== false,
+                            USE_FALLBACK_SIGNATURE: json.other?.useFallbackSignature !== false
                         };
 
                         setConfig(flattened);
