@@ -947,7 +947,9 @@
                             SKIP_PROJECT_ID_FETCH: json.other?.skipProjectIdFetch,
                             USE_NATIVE_AXIOS: json.other?.useNativeAxios,
                             USE_CONTEXT_SYSTEM_PROMPT: json.other?.useContextSystemPrompt,
-                            PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient
+                            PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient,
+                            USE_CACHED_SIGNATURE: json.other?.useCachedSignature !== false,
+                            USE_FALLBACK_SIGNATURE: json.other?.useFallbackSignature !== false
                         };
 
                         setConfig(flattened);
@@ -995,7 +997,9 @@
                             skipProjectIdFetch: config.SKIP_PROJECT_ID_FETCH || false,
                             useNativeAxios: config.USE_NATIVE_AXIOS || false,
                             useContextSystemPrompt: config.USE_CONTEXT_SYSTEM_PROMPT || false,
-                            passSignatureToClient: config.PASS_SIGNATURE_TO_CLIENT || false
+                            passSignatureToClient: config.PASS_SIGNATURE_TO_CLIENT || false,
+                            useCachedSignature: config.USE_CACHED_SIGNATURE !== false,
+                            useFallbackSignature: config.USE_FALLBACK_SIGNATURE !== false
                         }
                     };
 
@@ -1086,7 +1090,15 @@
                                 <Input label="Top K" type="number" value={config.DEFAULT_TOP_K || ''} onChange={(e) => setConfig({ ...config, DEFAULT_TOP_K: e.target.value })} />
                                 <Input label="Max Tokens" type="number" value={config.DEFAULT_MAX_TOKENS || ''} onChange={(e) => setConfig({ ...config, DEFAULT_MAX_TOKENS: e.target.value })} />
                             </div>
-                            <Input label="思考预算 (Thinking Budget)" type="number" value={config.DEFAULT_THINKING_BUDGET || ''} onChange={(e) => setConfig({ ...config, DEFAULT_THINKING_BUDGET: e.target.value })} help="思考模型的思考token预算，影响推理深度" />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <Input label="思考预算 (Thinking Budget)" type="number" value={config.DEFAULT_THINKING_BUDGET || ''} onChange={(e) => setConfig({ ...config, DEFAULT_THINKING_BUDGET: e.target.value })} help="思考模型的思考token预算，影响推理深度" />
+                                <Toggle
+                                    label="上下文 System (Context System)"
+                                    checked={config.USE_CONTEXT_SYSTEM_PROMPT || false}
+                                    onChange={(val) => setConfig({ ...config, USE_CONTEXT_SYSTEM_PROMPT: val })}
+                                    help="合并开头连续的 system 消息到 SystemInstruction"
+                                />
+                            </div>
                         </section>
 
                         {/* Rotation & Performance */}
@@ -1129,7 +1141,7 @@
                                     />
                                 )}
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', paddingTop: '8px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', paddingTop: '8px' }}>
                                 <Toggle
                                     label="透传签名 (Pass Signature)"
                                     checked={config.PASS_SIGNATURE_TO_CLIENT || false}
@@ -1137,10 +1149,16 @@
                                     help="将响应中的 thoughtSignature 透传到客户端"
                                 />
                                 <Toggle
-                                    label="上下文 System (Context System)"
-                                    checked={config.USE_CONTEXT_SYSTEM_PROMPT || false}
-                                    onChange={(val) => setConfig({ ...config, USE_CONTEXT_SYSTEM_PROMPT: val })}
-                                    help="合并开头连续的 system 消息到 SystemInstruction"
+                                    label="缓存签名 (Cached Signature)"
+                                    checked={config.USE_CACHED_SIGNATURE !== false}
+                                    onChange={(val) => setConfig({ ...config, USE_CACHED_SIGNATURE: val })}
+                                    help="缓存上游返回的签名并自动补全到后续请求"
+                                />
+                                <Toggle
+                                    label="兜底签名 (Fallback Signature)"
+                                    checked={config.USE_FALLBACK_SIGNATURE !== false}
+                                    onChange={(val) => setConfig({ ...config, USE_FALLBACK_SIGNATURE: val })}
+                                    help="没有缓存签名时，使用内置默认签名自动补全"
                                 />
                             </div>
                         </section>
