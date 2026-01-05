@@ -65,7 +65,7 @@ export const handleOpenAIRequest = async (req, res) => {
     if (isImageModel) {
       prepareImageRequest(requestBody);
     }
-    
+    //console.log(JSON.stringify(requestBody,null,2));
     const { id, created } = createResponseMeta();
     const maxRetries = Number(config.retryTimes || 0);
     const safeRetries = maxRetries > 0 ? Math.floor(maxRetries) : 0;
@@ -78,12 +78,16 @@ export const handleOpenAIRequest = async (req, res) => {
 
       try {
         if (isImageModel) {
-          const { content, usage } = await with429Retry(
+          const { content, usage, reasoningSignature } = await with429Retry(
             () => generateAssistantResponseNoStream(requestBody, token),
             safeRetries,
             'chat.stream.image '
           );
-          writeStreamData(res, createStreamChunk(id, created, model, { content }));
+          const delta = { content };
+          if (reasoningSignature && config.passSignatureToClient) {
+            delta.thoughtSignature = reasoningSignature;
+          }
+          writeStreamData(res, createStreamChunk(id, created, model, delta));
           writeStreamData(res, { ...createStreamChunk(id, created, model, {}, 'stop'), usage });
         } else {
           let hasToolCall = false;
