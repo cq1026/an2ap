@@ -1092,12 +1092,14 @@
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <Input label="思考预算 (Thinking Budget)" type="number" value={config.DEFAULT_THINKING_BUDGET || ''} onChange={(e) => setConfig({ ...config, DEFAULT_THINKING_BUDGET: e.target.value })} help="思考模型的思考token预算，影响推理深度" />
-                                <Toggle
-                                    label="上下文 System (Context System)"
-                                    checked={config.USE_CONTEXT_SYSTEM_PROMPT || false}
-                                    onChange={(val) => setConfig({ ...config, USE_CONTEXT_SYSTEM_PROMPT: val })}
-                                    help="合并开头连续的 system 消息到 SystemInstruction"
-                                />
+                                <div style={{ marginTop: '24px' }}>
+                                    <Toggle
+                                        label="上下文 System (Context System)"
+                                        checked={config.USE_CONTEXT_SYSTEM_PROMPT || false}
+                                        onChange={(val) => setConfig({ ...config, USE_CONTEXT_SYSTEM_PROMPT: val })}
+                                        help="合并开头连续的 system 消息到 SystemInstruction"
+                                    />
+                                </div>
                             </div>
                         </section>
 
