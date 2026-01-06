@@ -931,7 +931,7 @@
                             HOST: json.server?.host,
                             MAX_REQUEST_SIZE: json.server?.maxRequestSize,
                             HEARTBEAT_INTERVAL: json.server?.heartbeatInterval,
-                            MEMORY_THRESHOLD: json.server?.memoryThreshold,
+                            MEMORY_CLEANUP_INTERVAL: json.server?.memoryCleanupInterval,
                             // defaults
                             DEFAULT_TEMPERATURE: json.defaults?.temperature,
                             DEFAULT_TOP_P: json.defaults?.topP,
@@ -979,7 +979,7 @@
                             host: config.HOST,
                             maxRequestSize: config.MAX_REQUEST_SIZE,
                             heartbeatInterval: config.HEARTBEAT_INTERVAL !== undefined ? Number(config.HEARTBEAT_INTERVAL) : undefined,
-                            memoryThreshold: config.MEMORY_THRESHOLD !== undefined ? Number(config.MEMORY_THRESHOLD) : undefined
+                            memoryCleanupInterval: config.MEMORY_CLEANUP_INTERVAL !== undefined ? Number(config.MEMORY_CLEANUP_INTERVAL) : undefined
                         },
                         defaults: {
                             temperature: config.DEFAULT_TEMPERATURE !== undefined ? Number(config.DEFAULT_TEMPERATURE) : undefined,
@@ -1073,7 +1073,7 @@
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                                 <Input label="心跳间隔 (ms)" type="number" value={config.HEARTBEAT_INTERVAL || ''} onChange={(e) => setConfig({ ...config, HEARTBEAT_INTERVAL: e.target.value })} help="SSE心跳间隔，防止CF超时断连" />
-                                <Input label="内存阈值 (MB)" type="number" value={config.MEMORY_THRESHOLD || ''} onChange={(e) => setConfig({ ...config, MEMORY_THRESHOLD: e.target.value })} help="超过此值触发GC清理" />
+                                <Input label="内存清理间隔 (ms)" type="number" value={config.MEMORY_CLEANUP_INTERVAL || ''} onChange={(e) => setConfig({ ...config, MEMORY_CLEANUP_INTERVAL: e.target.value })} help="按固定间隔触发缓存/对象池清理" />
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
                                 <Input label="图片访问链接" value={config.IMAGE_BASE_URL || ''} onChange={(e) => setConfig({ ...config, IMAGE_BASE_URL: e.target.value })} placeholder="https://your-domain.com" />
