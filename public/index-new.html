@@ -949,7 +949,8 @@
                             USE_CONTEXT_SYSTEM_PROMPT: json.other?.useContextSystemPrompt,
                             PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient,
                             USE_CACHED_SIGNATURE: json.other?.useCachedSignature !== false,
-                            USE_FALLBACK_SIGNATURE: json.other?.useFallbackSignature !== false
+                            USE_FALLBACK_SIGNATURE: json.other?.useFallbackSignature !== false,
+                            CACHE_ONLY_TOOL_SIGNATURES: json.other?.cacheOnlyToolSignatures || false
                         };
 
                         setConfig(flattened);
@@ -999,7 +1000,8 @@
                             useContextSystemPrompt: config.USE_CONTEXT_SYSTEM_PROMPT || false,
                             passSignatureToClient: config.PASS_SIGNATURE_TO_CLIENT || false,
                             useCachedSignature: config.USE_CACHED_SIGNATURE !== false,
-                            useFallbackSignature: config.USE_FALLBACK_SIGNATURE !== false
+                            useFallbackSignature: config.USE_FALLBACK_SIGNATURE !== false,
+                            cacheOnlyToolSignatures: config.CACHE_ONLY_TOOL_SIGNATURES || false
                         }
                     };
 
@@ -1143,7 +1145,7 @@
                                     />
                                 )}
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', paddingTop: '8px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', paddingTop: '8px' }}>
                                 <Toggle
                                     label="透传签名 (Pass Signature)"
                                     checked={config.PASS_SIGNATURE_TO_CLIENT || false}
@@ -1161,6 +1163,12 @@
                                     checked={config.USE_FALLBACK_SIGNATURE !== false}
                                     onChange={(val) => setConfig({ ...config, USE_FALLBACK_SIGNATURE: val })}
                                     help="没有缓存签名时，使用内置默认签名自动补全"
+                                />
+                                <Toggle
+                                    label="仅工具签名缓存 (Cache Only Tool Signatures)"
+                                    checked={config.CACHE_ONLY_TOOL_SIGNATURES || false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_ONLY_TOOL_SIGNATURES: val })}
+                                    help="仅在有工具调用时缓存和补全工具签名"
                                 />
                             </div>
                         </section>
