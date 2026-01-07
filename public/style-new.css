@@ -565,6 +565,9 @@ input[type="number"]::-webkit-outer-spin-button {
 
 input[type="number"] {
   -moz-appearance: textfield;
+  /* Firefox */
+  appearance: textfield;
+  /* 标准属性 */
 }
 
 /* Toggle 开关 */
@@ -617,28 +620,28 @@ input[type="number"] {
   background: var(--zinc-900);
 }
 
-.toggle-input:checked + .toggle-slider {
+.toggle-input:checked+.toggle-slider {
   background: var(--zinc-900);
 }
 
-.dark .toggle-input:checked + .toggle-slider {
+.dark .toggle-input:checked+.toggle-slider {
   background: var(--zinc-100);
 }
 
-.toggle-input:checked + .toggle-slider::after {
+.toggle-input:checked+.toggle-slider::after {
   transform: translateX(16px);
   background: white;
 }
 
-.dark .toggle-input:checked + .toggle-slider::after {
+.dark .toggle-input:checked+.toggle-slider::after {
   background: var(--zinc-900);
 }
 
-.toggle-input:focus + .toggle-slider {
+.toggle-input:focus+.toggle-slider {
   box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.1);
 }
 
-.dark .toggle-input:focus + .toggle-slider {
+.dark .toggle-input:focus+.toggle-slider {
   box-shadow: 0 0 0 3px rgba(244, 244, 245, 0.1);
 }
 
@@ -650,11 +653,11 @@ input[type="number"] {
   background: var(--zinc-600);
 }
 
-.toggle-wrapper:hover .toggle-input:checked + .toggle-slider {
+.toggle-wrapper:hover .toggle-input:checked+.toggle-slider {
   background: var(--zinc-800);
 }
 
-.dark .toggle-wrapper:hover .toggle-input:checked + .toggle-slider {
+.dark .toggle-wrapper:hover .toggle-input:checked+.toggle-slider {
   background: var(--zinc-200);
 }
 
@@ -979,11 +982,11 @@ input[type="number"] {
   color: var(--text-secondary);
 }
 
-.modal-body > :first-child {
+.modal-body> :first-child {
   margin-top: 0 !important;
 }
 
-.modal-body > :last-child {
+.modal-body> :last-child {
   margin-bottom: 0 !important;
 }
 
@@ -1174,6 +1177,11 @@ input[type="number"] {
   animation: spin 1s linear infinite;
 }
 
+/* 通用loading动画 - 适用于所有带loading类的图标 */
+.loading svg {
+  animation: spin 1s linear infinite;
+}
+
 .quota-group {
   margin-bottom: 16px;
 }
@@ -1331,8 +1339,13 @@ input[type="number"] {
 
 /* ==================== 13. 动画 ==================== */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
@@ -1340,6 +1353,7 @@ input[type="number"] {
     transform: translateY(10px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -1347,8 +1361,13 @@ input[type="number"] {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .animate-fade-in {
@@ -1466,7 +1485,7 @@ input[type="number"] {
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -1476,7 +1495,7 @@ input[type="number"] {
 #versionSwitcher button:hover {
   background: #f4f4f5;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   border-color: #d4d4d8;
 }
 
