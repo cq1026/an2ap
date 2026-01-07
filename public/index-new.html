@@ -945,10 +945,12 @@
                             SKIP_PROJECT_ID_FETCH: json.other?.skipProjectIdFetch,
                             USE_NATIVE_AXIOS: json.other?.useNativeAxios,
                             USE_CONTEXT_SYSTEM_PROMPT: json.other?.useContextSystemPrompt,
-                            PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient,
-                            USE_CACHED_SIGNATURE: json.other?.useCachedSignature !== false,
+                            PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient || false,
                             USE_FALLBACK_SIGNATURE: json.other?.useFallbackSignature !== false,
-                            CACHE_ONLY_TOOL_SIGNATURES: json.other?.cacheOnlyToolSignatures || false
+                            CACHE_ALL_SIGNATURES: json.other?.cacheAllSignatures || false,
+                            CACHE_TOOL_SIGNATURES: json.other?.cacheToolSignatures !== false,
+                            CACHE_IMAGE_SIGNATURES: json.other?.cacheImageSignatures !== false,
+                            CACHE_THINKING: json.other?.cacheThinking !== false
                         };
 
                         setConfig(flattened);
@@ -997,9 +999,11 @@
                             useNativeAxios: config.USE_NATIVE_AXIOS || false,
                             useContextSystemPrompt: config.USE_CONTEXT_SYSTEM_PROMPT || false,
                             passSignatureToClient: config.PASS_SIGNATURE_TO_CLIENT || false,
-                            useCachedSignature: config.USE_CACHED_SIGNATURE !== false,
                             useFallbackSignature: config.USE_FALLBACK_SIGNATURE !== false,
-                            cacheOnlyToolSignatures: config.CACHE_ONLY_TOOL_SIGNATURES || false
+                            cacheAllSignatures: config.CACHE_ALL_SIGNATURES || false,
+                            cacheToolSignatures: config.CACHE_TOOL_SIGNATURES !== false,
+                            cacheImageSignatures: config.CACHE_IMAGE_SIGNATURES !== false,
+                            cacheThinking: config.CACHE_THINKING !== false
                         }
                     };
 
@@ -1151,22 +1155,34 @@
                                     help="将响应中的 thoughtSignature 透传到客户端"
                                 />
                                 <Toggle
-                                    label="缓存签名 (Cached Signature)"
-                                    checked={config.USE_CACHED_SIGNATURE !== false}
-                                    onChange={(val) => setConfig({ ...config, USE_CACHED_SIGNATURE: val })}
-                                    help="缓存上游返回的签名并自动补全到后续请求"
-                                />
-                                <Toggle
                                     label="兜底签名 (Fallback Signature)"
                                     checked={config.USE_FALLBACK_SIGNATURE !== false}
                                     onChange={(val) => setConfig({ ...config, USE_FALLBACK_SIGNATURE: val })}
                                     help="没有缓存签名时，使用内置默认签名自动补全"
                                 />
                                 <Toggle
-                                    label="仅工具签名缓存 (Cache Only Tool Signatures)"
-                                    checked={config.CACHE_ONLY_TOOL_SIGNATURES || false}
-                                    onChange={(val) => setConfig({ ...config, CACHE_ONLY_TOOL_SIGNATURES: val })}
-                                    help="仅在有工具调用时缓存和补全工具签名"
+                                    label="缓存所有签名 (Cache All)"
+                                    checked={config.CACHE_ALL_SIGNATURES || false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_ALL_SIGNATURES: val })}
+                                    help="开启后缓存所有签名"
+                                />
+                                <Toggle
+                                    label="工具签名 (Tool Signatures)"
+                                    checked={config.CACHE_TOOL_SIGNATURES !== false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_TOOL_SIGNATURES: val })}
+                                    help="使用工具时缓存签名"
+                                />
+                                <Toggle
+                                    label="图像签名 (Image Signatures)"
+                                    checked={config.CACHE_IMAGE_SIGNATURES !== false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_IMAGE_SIGNATURES: val })}
+                                    help="使用图像模型时缓存签名"
+                                />
+                                <Toggle
+                                    label="缓存思考 (Cache Thinking)"
+                                    checked={config.CACHE_THINKING !== false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_THINKING: val })}
+                                    help="缓存思考内容，随签名一起返回"
                                 />
                             </div>
                         </section>
