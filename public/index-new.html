@@ -112,17 +112,15 @@
         };
 
         // ==================== API 辅助函数 ====================
+        // 使用 HttpOnly Cookie 认证（更安全）
         const authFetch = async (url, options = {}) => {
-            const token = localStorage.getItem('authToken');
             const response = await fetch(url, {
                 ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': `Bearer ${token}`
-                }
+                credentials: 'include'  // 发送Cookie
             });
 
             if (response.status === 401) {
+                // 清除旧版本可能残留的localStorage token
                 localStorage.removeItem('authToken');
                 window.location.reload();
                 throw new Error('Unauthorized');
@@ -254,7 +252,7 @@
                 e.preventDefault();
                 setIsSaving(true);
                 try {
-                    await onSave(token.refresh_token, form);
+                    await onSave(token.id, form);
                     onClose();
                 } catch (error) {
                     addToast('保存失败: ' + error.message, 'error');
@@ -298,7 +296,7 @@
                         <div className="form-group">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                 <label className="form-label">Refresh Token (只读)</label>
-                                <button onClick={() => handleCopy(token.refresh_token, 'Refresh Token')} className="btn btn-ghost btn-icon" style={{ padding: '4px' }}>
+                                <button onClick={() => handleCopy(token.id, 'Token ID')} className="btn btn-ghost btn-icon" style={{ padding: '4px' }}>
                                     <Icon name="Copy" size={14} />
                                 </button>
                             </div>
@@ -313,7 +311,7 @@
                                 maxHeight: '96px',
                                 overflowY: 'auto'
                             }}>
-                                {token.refresh_token}
+                                {token.id}
                             </div>
                         </div>
 
@@ -358,7 +356,7 @@
 
                 setLoading(true);
                 try {
-                    const response = await authFetch(`/admin/tokens/${encodeURIComponent(token.refresh_token)}/quotas?refresh=${forceRefresh}`);
+                    const response = await authFetch(`/admin/tokens/${encodeURIComponent(token.id)}/quotas?refresh=${forceRefresh}`);
                     const data = await response.json();
 
                     if (data.success) {
@@ -663,6 +661,8 @@
             const [confirmModal, setConfirmModal] = useState({ isOpen: false });
             const [isRefreshing, setIsRefreshing] = useState(false);
             const [hideSensitive, setHideSensitive] = useState(true);
+            const [passwordModal, setPasswordModal] = useState({ isOpen: false, type: '', onConfirm: null });
+            const [importModal, setImportModal] = useState({ isOpen: false, data: null });
             const { addToast } = useToast();
 
             useEffect(() => {
@@ -749,6 +749,96 @@
                 });
             };
 
+            // 导出Token
+            const handleExport = () => {
+                setPasswordModal({
+                    isOpen: true,
+                    type: 'export',
+                    title: '导出 Token',
+                    onConfirm: async (password) => {
+                        try {
+                            const response = await authFetch('/admin/tokens/export', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ password })
+                            });
+
+                            const data = await response.json();
+                            if (data.success) {
+                                // 创建下载
+                                const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `tokens-export-${new Date().toISOString().slice(0, 10)}.json`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                addToast('导出成功', 'success');
+                                setPasswordModal({ isOpen: false });
+                            } else {
+                                addToast(data.message || '导出失败', 'error');
+                            }
+                        } catch (error) {
+                            addToast('导出失败: ' + error.message, 'error');
+                        }
+                    }
+                });
+            };
+
+            // 导入Token - 选择文件
+            const handleImport = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    try {
+                        const text = await file.text();
+                        const importData = JSON.parse(text);
+
+                        if (!importData.tokens || !Array.isArray(importData.tokens)) {
+                            addToast('无效的导入文件格式', 'error');
+                            return;
+                        }
+
+                        setImportModal({ isOpen: true, data: importData });
+                    } catch (error) {
+                        addToast('读取文件失败: ' + error.message, 'error');
+                    }
+                };
+                input.click();
+            };
+
+            // 确认导入
+            const confirmImport = async (password, mode) => {
+                try {
+                    const response = await authFetch('/admin/tokens/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            password,
+                            data: importModal.data,
+                            mode
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        addToast(`导入成功！${data.message || ''}`, 'success');
+                        setImportModal({ isOpen: false, data: null });
+                        loadTokens();
+                    } else {
+                        addToast(data.message || '导入失败', 'error');
+                    }
+                } catch (error) {
+                    addToast('导入失败: ' + error.message, 'error');
+                }
+            };
+
             const handleSaveTokenDetail = async (refreshToken, newData) => {
                 try {
                     const response = await authFetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
@@ -812,6 +902,12 @@
                             <Button variant="secondary" onClick={handleRefresh} disabled={isRefreshing}>
                                 <Icon name="RefreshCw" size={16} className={isRefreshing ? "loading" : ""} />
                             </Button>
+                            <Button variant="secondary" onClick={handleExport} title="导出Token">
+                                <Icon name="Download" size={16} />
+                            </Button>
+                            <Button variant="secondary" onClick={handleImport} title="导入Token">
+                                <Icon name="Upload" size={16} />
+                            </Button>
                             <Button onClick={() => setIsAddModalOpen(true)}>
                                 <Icon name="Plus" size={16} style={{ marginRight: '8px' }} /> 添加
                             </Button>
@@ -850,7 +946,7 @@
                                         </td>
                                         <td className="font-mono" style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
                                             <div className={hideSensitive ? 'blur-text' : ''}>Access: {token.access_token_suffix}</div>
-                                            <div>Refresh: {token.refresh_token.substring(0, 8)}...</div>
+                                            <div>Token ID: {token.id?.substring(0, 8) || 'N/A'}...</div>
                                         </td>
                                         <td className="text-center">
                                             <span className={`status-badge ${token.enable ? 'success' : 'disabled'}`}>
@@ -862,10 +958,10 @@
                                             <div className="table-actions">
                                                 <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
                                                 <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
-                                                <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.refresh_token, token.enable)}>
+                                                <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
                                                     {token.enable ? "禁用" : "启用"}
                                                 </Button>
-                                                <Button variant="danger" size="sm" onClick={() => handleDelete(token.refresh_token)} title="删除">
+                                                <Button variant="danger" size="sm" onClick={() => handleDelete(token.id)} title="删除">
                                                     <Icon name="Trash2" size={14} />
                                                 </Button>
                                             </div>
@@ -893,6 +989,123 @@
                         title={confirmModal.title}
                         message={confirmModal.message}
                     />
+
+                    {/* 密码输入模态框 */}
+                    {passwordModal.isOpen && (
+                        <Modal
+                            isOpen={passwordModal.isOpen}
+                            onClose={() => setPasswordModal({ isOpen: false })}
+                            title={passwordModal.title || '请输入密码'}
+                        >
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const password = e.target.elements.password.value;
+                                if (!password) {
+                                    addToast('请输入密码', 'warning');
+                                    return;
+                                }
+                                passwordModal.onConfirm(password);
+                            }}>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label className="form-label">管理员密码</label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        placeholder="请输入管理员密码"
+                                        className="form-input"
+                                        autoFocus
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            border: '1px solid var(--zinc-300)',
+                                            borderRadius: '6px',
+                                            fontSize: '14px'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <Button variant="secondary" type="button" onClick={() => setPasswordModal({ isOpen: false })}>
+                                        取消
+                                    </Button>
+                                    <Button type="submit">确认</Button>
+                                </div>
+                            </form>
+                        </Modal>
+                    )}
+
+                    {/* 导入选项模态框 */}
+                    {importModal.isOpen && importModal.data && (
+                        <Modal
+                            isOpen={importModal.isOpen}
+                            onClose={() => setImportModal({ isOpen: false, data: null })}
+                            title="导入 Token"
+                        >
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const password = e.target.elements.password.value;
+                                const mode = e.target.elements.mode.value;
+                                if (!password) {
+                                    addToast('请输入密码', 'warning');
+                                    return;
+                                }
+                                confirmImport(password, mode);
+                            }}>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <p style={{ marginBottom: '8px' }}>
+                                        文件包含 <strong>{importModal.data.tokens.length}</strong> 个 Token
+                                    </p>
+                                    {importModal.data.exportTime && (
+                                        <p style={{ fontSize: '12px', color: 'var(--zinc-500)', marginBottom: '16px' }}>
+                                            导出时间: {importModal.data.exportTime}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label className="form-label">导入模式</label>
+                                    <select
+                                        name="mode"
+                                        className="form-input"
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            border: '1px solid var(--zinc-300)',
+                                            borderRadius: '6px',
+                                            fontSize: '14px'
+                                        }}
+                                    >
+                                        <option value="merge">合并（保留现有，添加新的）</option>
+                                        <option value="replace">替换（清空现有，导入新的）</option>
+                                    </select>
+                                </div>
+
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label className="form-label">管理员密码</label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        placeholder="请输入管理员密码"
+                                        className="form-input"
+                                        autoFocus
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            border: '1px solid var(--zinc-300)',
+                                            borderRadius: '6px',
+                                            fontSize: '14px'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <Button variant="secondary" type="button" onClick={() => setImportModal({ isOpen: false, data: null })}>
+                                        取消
+                                    </Button>
+                                    <Button type="submit">确认导入</Button>
+                                </div>
+                            </form>
+                        </Modal>
+                    )}
                 </div>
             );
         };
@@ -901,6 +1114,7 @@
         const Settings = ({ darkMode }) => {
             const [config, setConfig] = useState({});
             const [isSaving, setIsSaving] = useState(false);
+            const [rotationStatus, setRotationStatus] = useState({ currentIndex: 0 });
             const [fontSize, setFontSize] = useState(() => {
                 return parseInt(localStorage.getItem('fontSize')) || 16;
             });
@@ -908,12 +1122,25 @@
 
             useEffect(() => {
                 loadConfig();
+                loadRotationStatus();
             }, []);
 
             useEffect(() => {
                 document.documentElement.style.fontSize = `${fontSize}px`;
                 localStorage.setItem('fontSize', fontSize);
             }, [fontSize]);
+
+            const loadRotationStatus = async () => {
+                try {
+                    const response = await authFetch('/admin/rotation');
+                    const data = await response.json();
+                    if (data.success) {
+                        setRotationStatus(data.data);
+                    }
+                } catch (error) {
+                    // 忽略错误，使用默认值
+                }
+            };
 
             const loadConfig = async () => {
                 try {
@@ -947,10 +1174,12 @@
                             SKIP_PROJECT_ID_FETCH: json.other?.skipProjectIdFetch,
                             USE_NATIVE_AXIOS: json.other?.useNativeAxios,
                             USE_CONTEXT_SYSTEM_PROMPT: json.other?.useContextSystemPrompt,
-                            PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient,
-                            USE_CACHED_SIGNATURE: json.other?.useCachedSignature !== false,
+                            PASS_SIGNATURE_TO_CLIENT: json.other?.passSignatureToClient || false,
                             USE_FALLBACK_SIGNATURE: json.other?.useFallbackSignature !== false,
-                            CACHE_ONLY_TOOL_SIGNATURES: json.other?.cacheOnlyToolSignatures || false
+                            CACHE_ALL_SIGNATURES: json.other?.cacheAllSignatures || false,
+                            CACHE_TOOL_SIGNATURES: json.other?.cacheToolSignatures !== false,
+                            CACHE_IMAGE_SIGNATURES: json.other?.cacheImageSignatures !== false,
+                            CACHE_THINKING: json.other?.cacheThinking !== false
                         };
 
                         setConfig(flattened);
@@ -999,9 +1228,11 @@
                             useNativeAxios: config.USE_NATIVE_AXIOS || false,
                             useContextSystemPrompt: config.USE_CONTEXT_SYSTEM_PROMPT || false,
                             passSignatureToClient: config.PASS_SIGNATURE_TO_CLIENT || false,
-                            useCachedSignature: config.USE_CACHED_SIGNATURE !== false,
                             useFallbackSignature: config.USE_FALLBACK_SIGNATURE !== false,
-                            cacheOnlyToolSignatures: config.CACHE_ONLY_TOOL_SIGNATURES || false
+                            cacheAllSignatures: config.CACHE_ALL_SIGNATURES || false,
+                            cacheToolSignatures: config.CACHE_TOOL_SIGNATURES !== false,
+                            cacheImageSignatures: config.CACHE_IMAGE_SIGNATURES !== false,
+                            cacheThinking: config.CACHE_THINKING !== false
                         }
                     };
 
@@ -1121,7 +1352,7 @@
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                                <span>当前状态: <span style={{ fontWeight: 600 }}>{rotationStatusText}</span> | 索引: 0</span>
+                                <span>当前状态: <span style={{ fontWeight: 600 }}>{rotationStatusText}</span> | 索引: {rotationStatus.currentIndex}</span>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <Select
@@ -1153,22 +1384,34 @@
                                     help="将响应中的 thoughtSignature 透传到客户端"
                                 />
                                 <Toggle
-                                    label="缓存签名 (Cached Signature)"
-                                    checked={config.USE_CACHED_SIGNATURE !== false}
-                                    onChange={(val) => setConfig({ ...config, USE_CACHED_SIGNATURE: val })}
-                                    help="缓存上游返回的签名并自动补全到后续请求"
-                                />
-                                <Toggle
                                     label="兜底签名 (Fallback Signature)"
                                     checked={config.USE_FALLBACK_SIGNATURE !== false}
                                     onChange={(val) => setConfig({ ...config, USE_FALLBACK_SIGNATURE: val })}
                                     help="没有缓存签名时，使用内置默认签名自动补全"
                                 />
                                 <Toggle
-                                    label="仅工具签名缓存 (Cache Only Tool Signatures)"
-                                    checked={config.CACHE_ONLY_TOOL_SIGNATURES || false}
-                                    onChange={(val) => setConfig({ ...config, CACHE_ONLY_TOOL_SIGNATURES: val })}
-                                    help="仅在有工具调用时缓存和补全工具签名"
+                                    label="缓存所有签名 (Cache All)"
+                                    checked={config.CACHE_ALL_SIGNATURES || false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_ALL_SIGNATURES: val })}
+                                    help="开启后缓存所有签名"
+                                />
+                                <Toggle
+                                    label="工具签名 (Tool Signatures)"
+                                    checked={config.CACHE_TOOL_SIGNATURES !== false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_TOOL_SIGNATURES: val })}
+                                    help="使用工具时缓存签名"
+                                />
+                                <Toggle
+                                    label="图像签名 (Image Signatures)"
+                                    checked={config.CACHE_IMAGE_SIGNATURES !== false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_IMAGE_SIGNATURES: val })}
+                                    help="使用图像模型时缓存签名"
+                                />
+                                <Toggle
+                                    label="缓存思考 (Cache Thinking)"
+                                    checked={config.CACHE_THINKING !== false}
+                                    onChange={(val) => setConfig({ ...config, CACHE_THINKING: val })}
+                                    help="缓存思考内容，随签名一起返回"
                                 />
                             </div>
                         </section>
@@ -1265,12 +1508,14 @@
                     const response = await fetch('/admin/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password })
+                        body: JSON.stringify({ username, password }),
+                        credentials: 'include'  // 接收Cookie
                     });
 
                     const data = await response.json();
                     if (data.success) {
-                        localStorage.setItem('authToken', data.token);
+                        // 不再使用localStorage存储token，改用HttpOnly Cookie（更安全）
+                        // Cookie由后端自动设置，前端无需手动处理
                         addToast('登录成功！', 'success');
                         onLogin();
                     } else {
@@ -1337,10 +1582,22 @@
 
             const toggleDarkMode = () => setDarkMode(!darkMode);
 
-            const handleLogout = () => {
+            const handleLogout = async () => {
+                try {
+                    // 调用后端登出接口清除Cookie
+                    await fetch('/admin/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                } catch (e) {
+                    // 忽略错误，继续前端登出流程
+                }
+
+                // 清除旧版本可能残留的localStorage token
                 localStorage.removeItem('authToken');
                 setView('login');
                 setShowLogoutConfirm(false);
+                addToast('已退出登录', 'info');
             };
 
             if (view === 'login') return <Login onLogin={() => setView('dashboard')} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
