@@ -254,7 +254,7 @@
                 e.preventDefault();
                 setIsSaving(true);
                 try {
-                    await onSave(token.refresh_token, form);
+                    await onSave(token.id, form);
                     onClose();
                 } catch (error) {
                     addToast('保存失败: ' + error.message, 'error');
@@ -298,7 +298,7 @@
                         <div className="form-group">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                                 <label className="form-label">Refresh Token (只读)</label>
-                                <button onClick={() => handleCopy(token.refresh_token, 'Refresh Token')} className="btn btn-ghost btn-icon" style={{ padding: '4px' }}>
+                                <button onClick={() => handleCopy(token.id, 'Token ID')} className="btn btn-ghost btn-icon" style={{ padding: '4px' }}>
                                     <Icon name="Copy" size={14} />
                                 </button>
                             </div>
@@ -313,7 +313,7 @@
                                 maxHeight: '96px',
                                 overflowY: 'auto'
                             }}>
-                                {token.refresh_token}
+                                {token.id}
                             </div>
                         </div>
 
@@ -358,7 +358,7 @@
 
                 setLoading(true);
                 try {
-                    const response = await authFetch(`/admin/tokens/${encodeURIComponent(token.refresh_token)}/quotas?refresh=${forceRefresh}`);
+                    const response = await authFetch(`/admin/tokens/${encodeURIComponent(token.id)}/quotas?refresh=${forceRefresh}`);
                     const data = await response.json();
 
                     if (data.success) {
@@ -850,7 +850,7 @@
                                         </td>
                                         <td className="font-mono" style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
                                             <div className={hideSensitive ? 'blur-text' : ''}>Access: {token.access_token_suffix}</div>
-                                            <div>Refresh: {token.refresh_token.substring(0, 8)}...</div>
+                                            <div>Token ID: {token.id?.substring(0, 8) || 'N/A'}...</div>
                                         </td>
                                         <td className="text-center">
                                             <span className={`status-badge ${token.enable ? 'success' : 'disabled'}`}>
@@ -862,10 +862,10 @@
                                             <div className="table-actions">
                                                 <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
                                                 <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
-                                                <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.refresh_token, token.enable)}>
+                                                <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
                                                     {token.enable ? "禁用" : "启用"}
                                                 </Button>
-                                                <Button variant="danger" size="sm" onClick={() => handleDelete(token.refresh_token)} title="删除">
+                                                <Button variant="danger" size="sm" onClick={() => handleDelete(token.id)} title="删除">
                                                     <Icon name="Trash2" size={14} />
                                                 </Button>
                                             </div>
