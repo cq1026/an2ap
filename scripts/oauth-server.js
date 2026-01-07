@@ -10,8 +10,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ACCOUNTS_FILE = path.join(__dirname, '..', 'data', 'accounts.json');
 
+let isClosing = false;
+
 const server = http.createServer((req, res) => {
-  const port = server.address().port;
+  // 如果服务器正在关闭，忽略新请求
+  const addr = server.address();
+  if (!addr || isClosing) {
+    res.writeHead(503);
+    res.end('Server is shutting down');
+    return;
+  }
+  
+  const port = addr.port;
   const url = new URL(req.url, `http://localhost:${port}`);
   
   if (url.pathname === '/oauth-callback') {
@@ -34,17 +44,20 @@ const server = http.createServer((req, res) => {
         const statusMsg = account.hasQuota ? '' : '<p style="color: orange;">⚠️ 该账号无资格，已自动使用随机ProjectId</p>';
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(`<h1>授权成功！</h1><p>Token 已保存，可以关闭此页面。</p>${statusMsg}`);
+        isClosing = true;
         setTimeout(() => server.close(), 1000);
       }).catch(err => {
         log.error('认证失败:', err.message);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end('<h1>认证失败</h1><p>查看控制台错误信息</p>');
+        isClosing = true;
         setTimeout(() => server.close(), 1000);
       });
     } else {
       log.error('授权失败:', error || '未收到授权码');
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end('<h1>授权失败</h1>');
+      isClosing = true;
       setTimeout(() => server.close(), 1000);
     }
   } else {
