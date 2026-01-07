@@ -661,6 +661,8 @@
             const [confirmModal, setConfirmModal] = useState({ isOpen: false });
             const [isRefreshing, setIsRefreshing] = useState(false);
             const [hideSensitive, setHideSensitive] = useState(true);
+            const [passwordModal, setPasswordModal] = useState({ isOpen: false, type: '', onConfirm: null });
+            const [importModal, setImportModal] = useState({ isOpen: false, data: null });
             const { addToast } = useToast();
 
             useEffect(() => {
@@ -747,6 +749,96 @@
                 });
             };
 
+            // 导出Token
+            const handleExport = () => {
+                setPasswordModal({
+                    isOpen: true,
+                    type: 'export',
+                    title: '导出 Token',
+                    onConfirm: async (password) => {
+                        try {
+                            const response = await authFetch('/admin/tokens/export', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ password })
+                            });
+
+                            const data = await response.json();
+                            if (data.success) {
+                                // 创建下载
+                                const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `tokens-export-${new Date().toISOString().slice(0, 10)}.json`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                addToast('导出成功', 'success');
+                                setPasswordModal({ isOpen: false });
+                            } else {
+                                addToast(data.message || '导出失败', 'error');
+                            }
+                        } catch (error) {
+                            addToast('导出失败: ' + error.message, 'error');
+                        }
+                    }
+                });
+            };
+
+            // 导入Token - 选择文件
+            const handleImport = () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json';
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    try {
+                        const text = await file.text();
+                        const importData = JSON.parse(text);
+
+                        if (!importData.tokens || !Array.isArray(importData.tokens)) {
+                            addToast('无效的导入文件格式', 'error');
+                            return;
+                        }
+
+                        setImportModal({ isOpen: true, data: importData });
+                    } catch (error) {
+                        addToast('读取文件失败: ' + error.message, 'error');
+                    }
+                };
+                input.click();
+            };
+
+            // 确认导入
+            const confirmImport = async (password, mode) => {
+                try {
+                    const response = await authFetch('/admin/tokens/import', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            password,
+                            data: importModal.data,
+                            mode
+                        })
+                    });
+
+                    const data = await response.json();
+                    if (data.success) {
+                        addToast(`导入成功！${data.message || ''}`, 'success');
+                        setImportModal({ isOpen: false, data: null });
+                        loadTokens();
+                    } else {
+                        addToast(data.message || '导入失败', 'error');
+                    }
+                } catch (error) {
+                    addToast('导入失败: ' + error.message, 'error');
+                }
+            };
+
             const handleSaveTokenDetail = async (refreshToken, newData) => {
                 try {
                     const response = await authFetch(`/admin/tokens/${encodeURIComponent(refreshToken)}`, {
@@ -809,6 +901,12 @@
                             </Button>
                             <Button variant="secondary" onClick={handleRefresh} disabled={isRefreshing}>
                                 <Icon name="RefreshCw" size={16} className={isRefreshing ? "loading" : ""} />
+                            </Button>
+                            <Button variant="secondary" onClick={handleExport} title="导出Token">
+                                <Icon name="Download" size={16} />
+                            </Button>
+                            <Button variant="secondary" onClick={handleImport} title="导入Token">
+                                <Icon name="Upload" size={16} />
                             </Button>
                             <Button onClick={() => setIsAddModalOpen(true)}>
                                 <Icon name="Plus" size={16} style={{ marginRight: '8px' }} /> 添加
@@ -891,6 +989,123 @@
                         title={confirmModal.title}
                         message={confirmModal.message}
                     />
+
+                    {/* 密码输入模态框 */}
+                    {passwordModal.isOpen && (
+                        <Modal
+                            isOpen={passwordModal.isOpen}
+                            onClose={() => setPasswordModal({ isOpen: false })}
+                            title={passwordModal.title || '请输入密码'}
+                        >
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const password = e.target.elements.password.value;
+                                if (!password) {
+                                    addToast('请输入密码', 'warning');
+                                    return;
+                                }
+                                passwordModal.onConfirm(password);
+                            }}>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label className="form-label">管理员密码</label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        placeholder="请输入管理员密码"
+                                        className="form-input"
+                                        autoFocus
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            border: '1px solid var(--zinc-300)',
+                                            borderRadius: '6px',
+                                            fontSize: '14px'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <Button variant="secondary" type="button" onClick={() => setPasswordModal({ isOpen: false })}>
+                                        取消
+                                    </Button>
+                                    <Button type="submit">确认</Button>
+                                </div>
+                            </form>
+                        </Modal>
+                    )}
+
+                    {/* 导入选项模态框 */}
+                    {importModal.isOpen && importModal.data && (
+                        <Modal
+                            isOpen={importModal.isOpen}
+                            onClose={() => setImportModal({ isOpen: false, data: null })}
+                            title="导入 Token"
+                        >
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                const password = e.target.elements.password.value;
+                                const mode = e.target.elements.mode.value;
+                                if (!password) {
+                                    addToast('请输入密码', 'warning');
+                                    return;
+                                }
+                                confirmImport(password, mode);
+                            }}>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <p style={{ marginBottom: '8px' }}>
+                                        文件包含 <strong>{importModal.data.tokens.length}</strong> 个 Token
+                                    </p>
+                                    {importModal.data.exportTime && (
+                                        <p style={{ fontSize: '12px', color: 'var(--zinc-500)', marginBottom: '16px' }}>
+                                            导出时间: {importModal.data.exportTime}
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label className="form-label">导入模式</label>
+                                    <select
+                                        name="mode"
+                                        className="form-input"
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            border: '1px solid var(--zinc-300)',
+                                            borderRadius: '6px',
+                                            fontSize: '14px'
+                                        }}
+                                    >
+                                        <option value="merge">合并（保留现有，添加新的）</option>
+                                        <option value="replace">替换（清空现有，导入新的）</option>
+                                    </select>
+                                </div>
+
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label className="form-label">管理员密码</label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        placeholder="请输入管理员密码"
+                                        className="form-input"
+                                        autoFocus
+                                        style={{
+                                            width: '100%',
+                                            padding: '8px 12px',
+                                            border: '1px solid var(--zinc-300)',
+                                            borderRadius: '6px',
+                                            fontSize: '14px'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                    <Button variant="secondary" type="button" onClick={() => setImportModal({ isOpen: false, data: null })}>
+                                        取消
+                                    </Button>
+                                    <Button type="submit">确认导入</Button>
+                                </div>
+                            </form>
+                        </Modal>
+                    )}
                 </div>
             );
         };
@@ -899,6 +1114,7 @@
         const Settings = ({ darkMode }) => {
             const [config, setConfig] = useState({});
             const [isSaving, setIsSaving] = useState(false);
+            const [rotationStatus, setRotationStatus] = useState({ currentIndex: 0 });
             const [fontSize, setFontSize] = useState(() => {
                 return parseInt(localStorage.getItem('fontSize')) || 16;
             });
@@ -906,12 +1122,25 @@
 
             useEffect(() => {
                 loadConfig();
+                loadRotationStatus();
             }, []);
 
             useEffect(() => {
                 document.documentElement.style.fontSize = `${fontSize}px`;
                 localStorage.setItem('fontSize', fontSize);
             }, [fontSize]);
+
+            const loadRotationStatus = async () => {
+                try {
+                    const response = await authFetch('/admin/rotation');
+                    const data = await response.json();
+                    if (data.success) {
+                        setRotationStatus(data.data);
+                    }
+                } catch (error) {
+                    // 忽略错误，使用默认值
+                }
+            };
 
             const loadConfig = async () => {
                 try {
@@ -1123,7 +1352,7 @@
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                                <span>当前状态: <span style={{ fontWeight: 600 }}>{rotationStatusText}</span> | 索引: 0</span>
+                                <span>当前状态: <span style={{ fontWeight: 600 }}>{rotationStatusText}</span> | 索引: {rotationStatus.currentIndex}</span>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <Select
