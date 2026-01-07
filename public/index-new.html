@@ -112,17 +112,15 @@
         };
 
         // ==================== API 辅助函数 ====================
+        // 使用 HttpOnly Cookie 认证（更安全）
         const authFetch = async (url, options = {}) => {
-            const token = localStorage.getItem('authToken');
             const response = await fetch(url, {
                 ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': `Bearer ${token}`
-                }
+                credentials: 'include'  // 发送Cookie
             });
 
             if (response.status === 401) {
+                // 清除旧版本可能残留的localStorage token
                 localStorage.removeItem('authToken');
                 window.location.reload();
                 throw new Error('Unauthorized');
@@ -1265,12 +1263,14 @@
                     const response = await fetch('/admin/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password })
+                        body: JSON.stringify({ username, password }),
+                        credentials: 'include'  // 接收Cookie
                     });
 
                     const data = await response.json();
                     if (data.success) {
-                        localStorage.setItem('authToken', data.token);
+                        // 不再使用localStorage存储token，改用HttpOnly Cookie（更安全）
+                        // Cookie由后端自动设置，前端无需手动处理
                         addToast('登录成功！', 'success');
                         onLogin();
                     } else {
@@ -1337,10 +1337,22 @@
 
             const toggleDarkMode = () => setDarkMode(!darkMode);
 
-            const handleLogout = () => {
+            const handleLogout = async () => {
+                try {
+                    // 调用后端登出接口清除Cookie
+                    await fetch('/admin/logout', {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                } catch (e) {
+                    // 忽略错误，继续前端登出流程
+                }
+
+                // 清除旧版本可能残留的localStorage token
                 localStorage.removeItem('authToken');
                 setView('login');
                 setShowLogoutConfirm(false);
+                addToast('已退出登录', 'info');
             };
 
             if (view === 'login') return <Login onLogin={() => setView('dashboard')} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />;
