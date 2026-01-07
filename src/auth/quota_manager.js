@@ -100,6 +100,8 @@ class QuotaManager {
       clearInterval(this.cleanupTimer);
     }
     this.cleanupTimer = setInterval(() => this.cleanup(), this.CLEANUP_INTERVAL);
+    // 使用 unref 避免阻止进程退出
+    this.cleanupTimer.unref?.();
   }
 
   stopCleanupTimer() {

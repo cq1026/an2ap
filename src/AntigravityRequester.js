@@ -306,6 +306,8 @@ class StreamResponse {
         this._error = null;
         this._textPromiseResolve = null;
         this._textPromiseReject = null;
+        // 保存最终文本结果（用于流结束后调用 text()）
+        this._finalText = null;
     }
 
     _handleChunk(chunk) {
@@ -314,20 +316,26 @@ class StreamResponse {
             this.headers = new Map(Object.entries(chunk.headers || {}));
             if (this._onStart) this._onStart({ status: chunk.status, headers: this.headers });
         } else if (chunk.type === 'data') {
-            const data = chunk.encoding === 'base64' 
+            const data = chunk.encoding === 'base64'
                 ? Buffer.from(chunk.data, 'base64').toString('utf8')
                 : chunk.data;
             this.chunks.push(data);
             if (this._onData) this._onData(data);
         } else if (chunk.type === 'end') {
             this._ended = true;
-            if (this._textPromiseResolve) this._textPromiseResolve(this.chunks.join(''));
+            // 先保存最终文本，再清空 chunks（释放内存）
+            this._finalText = this.chunks.join('');
+            if (this._textPromiseResolve) this._textPromiseResolve(this._finalText);
             if (this._onEnd) this._onEnd();
+            // 流结束后清理 chunks 数组，释放内存
+            this.chunks = [];
         } else if (chunk.type === 'error') {
             this._ended = true;
             this._error = new Error(chunk.error);
             if (this._textPromiseReject) this._textPromiseReject(this._error);
             if (this._onError) this._onError(this._error);
+            // 错误时也清理 chunks 数组
+            this.chunks = [];
         }
     }
 
@@ -354,7 +362,8 @@ class StreamResponse {
     async text() {
         if (this._ended) {
             if (this._error) throw this._error;
-            return this.chunks.join('');
+            // 使用保存的最终文本，因为 chunks 可能已被清空
+            return this._finalText || '';
         }
         return new Promise((resolve, reject) => {
             this._textPromiseResolve = resolve;
