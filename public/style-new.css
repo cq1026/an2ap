@@ -1177,8 +1177,8 @@ input[type="number"] {
   animation: spin 1s linear infinite;
 }
 
-/* 通用loading动画 - 适用于所有带loading类的图标 */
-.loading svg {
+/* 全局刷新按钮loading动画 - SVG本身带loading类 */
+svg.loading {
   animation: spin 1s linear infinite;
 }
 
