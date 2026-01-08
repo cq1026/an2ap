@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import { getDataDir } from '../utils/paths.js';
 import { FILE_CACHE_TTL } from '../constants/index.js';
 import { log } from '../utils/logger.js';
@@ -24,6 +25,7 @@ class TokenStore {
     this._cacheTime = 0;
     this._cacheTTL = FILE_CACHE_TTL;
     this._salt = null;
+    this._lastReadOk = true;
     // 写入锁：防止并发写入导致数据损坏
     this._writeQueue = Promise.resolve();
     this._pendingWrite = null;
@@ -47,6 +49,50 @@ class TokenStore {
       };
       await fs.writeFile(this.filePath, JSON.stringify(initialData, null, 2), 'utf8');
       log.info('✓ 已创建账号配置文件（含安全盐值）');
+    }
+  }
+
+  async _atomicWrite(content) {
+    const dir = path.dirname(this.filePath);
+    const base = path.basename(this.filePath);
+    const tempPath = path.join(dir, `.${base}.${process.pid}.${Date.now()}.${randomUUID()}.tmp`);
+    let handle;
+
+    try {
+      handle = await fs.open(tempPath, 'w');
+      await handle.writeFile(content, 'utf8');
+      await handle.sync();
+      await handle.close();
+      try {
+        await fs.rename(tempPath, this.filePath);
+      } catch (renameError) {
+        if (renameError.code === 'EEXIST' || renameError.code === 'EPERM') {
+          try {
+            await fs.unlink(this.filePath);
+          } catch (unlinkError) {
+            if (unlinkError.code !== 'ENOENT') {
+              throw unlinkError;
+            }
+          }
+          await fs.rename(tempPath, this.filePath);
+        } else {
+          throw renameError;
+        }
+      }
+    } catch (error) {
+      if (handle) {
+        try {
+          await handle.close();
+        } catch (closeError) {
+          // Ignore close errors after write failures.
+        }
+      }
+      try {
+        await fs.unlink(tempPath);
+      } catch (cleanupError) {
+        // Ignore cleanup errors for temp files.
+      }
+      throw error;
     }
   }
 
@@ -115,15 +161,27 @@ class TokenStore {
       // 兼容旧格式：如果是数组，直接使用
       if (Array.isArray(parsed)) {
         this._cache = parsed;
+        this._lastReadOk = true;
       } else if (parsed.tokens && Array.isArray(parsed.tokens)) {
         this._cache = parsed.tokens;
+        this._lastReadOk = true;
       } else {
-        log.warn('账号配置文件格式异常，已重置为空数组');
-        this._cache = [];
+        log.warn('账号配置文件格式异常，保留缓存并跳过本次读取');
+        this._lastReadOk = false;
+        if (this._cache) {
+          this._cacheTime = Date.now();
+          return this._cache;
+        }
+        return [];
       }
     } catch (error) {
       log.error('读取账号配置文件失败:', error.message);
-      this._cache = [];
+      this._lastReadOk = false;
+      if (this._cache) {
+        this._cacheTime = Date.now();
+        return this._cache;
+      }
+      return [];
     }
     this._cacheTime = Date.now();
     return this._cache;
@@ -149,9 +207,10 @@ class TokenStore {
           salt: salt,
           tokens: normalized
         };
-        await fs.writeFile(this.filePath, JSON.stringify(fileData, null, 2), 'utf8');
+        await this._atomicWrite(JSON.stringify(fileData, null, 2));
         this._cache = normalized;
         this._cacheTime = Date.now();
+        this._lastReadOk = true;
       } catch (error) {
         log.error('保存账号配置文件失败:', error.message);
         throw error;
@@ -181,6 +240,7 @@ class TokenStore {
     // 使用写入队列来确保并发安全
     const mergeOperation = async () => {
       const allTokens = [...await this.readAll()];
+      const hasActiveTokens = Array.isArray(activeTokens) && activeTokens.length > 0;
 
       const applyUpdate = (targetToken) => {
         if (!targetToken) return;
@@ -190,6 +250,15 @@ class TokenStore {
           allTokens[index] = { ...allTokens[index], ...plain };
         }
       };
+
+      if (!this._lastReadOk && allTokens.length === 0) {
+        log.warn('账号配置文件读取失败，跳过写入以避免覆盖');
+        return null;
+      }
+
+      if (allTokens.length === 0 && hasActiveTokens) {
+        return activeTokens.map(({ sessionId, ...plain }) => ({ ...plain }));
+      }
 
       if (tokenToUpdate) {
         applyUpdate(tokenToUpdate);
@@ -206,6 +275,7 @@ class TokenStore {
     this._writeQueue = this._writeQueue
       .then(async () => {
         const mergedTokens = await mergeOperation();
+        if (!mergedTokens) return;
         await this._ensureFileExists();
         const salt = await this.getSalt();
         
@@ -214,9 +284,10 @@ class TokenStore {
             salt: salt,
             tokens: mergedTokens
           };
-          await fs.writeFile(this.filePath, JSON.stringify(fileData, null, 2), 'utf8');
+          await this._atomicWrite(JSON.stringify(fileData, null, 2));
           this._cache = mergedTokens;
           this._cacheTime = Date.now();
+          this._lastReadOk = true;
         } catch (error) {
           log.error('保存账号配置文件失败:', error.message);
           // 不抛出错误，避免中断队列

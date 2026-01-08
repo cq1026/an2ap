@@ -56,6 +56,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare config file
+        run: |
+          if [ ! -f config.json ]; then
+            cp config.json.example config.json
+          fi
+        shell: bash
+
       - name: Build binary
         run: npm run build:${{ matrix.target }}
 

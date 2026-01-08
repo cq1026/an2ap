@@ -240,9 +240,9 @@ export function buildRequestBody({ contents, tools, generationConfig, sessionId,
 export function buildSystemPromptParts(userSystemPrompt) {
   const parts = [];
   
-  // 获取各层提示词
-  const officialPrompt = config.officialSystemPrompt || '';
-  const proxyPrompt = config.systemInstruction || '';
+  // 获取各层提示词（config.js 已处理默认值，直接使用）
+  const officialPrompt = config.officialSystemPrompt;
+  const proxyPrompt = config.systemInstruction;
   
   // 处理用户提示词：可能是字符串或 parts 数组
   let userParts = [];

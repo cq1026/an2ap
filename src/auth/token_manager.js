@@ -233,8 +233,8 @@ class TokenManager {
       method: 'POST',
       url: 'https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist',
       headers: {
-        'Host': 'daily-cloudcode-pa.googleapis.com',
-        'User-Agent': 'antigravity/1.13.3 windows/amd64',
+        'Host': config.api.host,
+        'User-Agent': config.api.userAgent,
         'Authorization': `Bearer ${token.access_token}`,
         'Content-Type': 'application/json',
         'Accept-Encoding': 'gzip'

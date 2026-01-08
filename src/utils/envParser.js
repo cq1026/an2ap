@@ -71,16 +71,34 @@ export function parseEnvFile(filePath) {
 
 /**
  * 更新 .env 文件中的键值对
+ * 支持多行字符串（自动用双引号包裹）
  */
 export function updateEnvFile(filePath, updates) {
   let content = fs.readFileSync(filePath, 'utf8');
   
   Object.entries(updates).forEach(([key, value]) => {
-    const regex = new RegExp(`^${key}=.*$`, 'm');
-    if (regex.test(content)) {
-      content = content.replace(regex, `${key}=${value}`);
+    // 检查值是否包含换行符，如果包含则用双引号包裹
+    let formattedValue = value;
+    if (typeof value === 'string' && value.includes('\n')) {
+      // 多行字符串：用双引号包裹
+      formattedValue = `"${value}"`;
+    }
+    
+    // 匹配整个键值对（包括可能的多行值）
+    // 1. 先尝试匹配单行格式
+    const singleLineRegex = new RegExp(`^${key}=.*$`, 'm');
+    // 2. 再尝试匹配多行格式（以引号开头，可能跨多行，以引号结尾）
+    const multiLineRegex = new RegExp(`^${key}=["']([\\s\\S]*?)["']$`, 'm');
+    
+    if (multiLineRegex.test(content)) {
+      // 替换多行格式
+      content = content.replace(multiLineRegex, `${key}=${formattedValue}`);
+    } else if (singleLineRegex.test(content)) {
+      // 替换单行格式
+      content = content.replace(singleLineRegex, `${key}=${formattedValue}`);
     } else {
-      content += `\n${key}=${value}`;
+      // 键不存在，追加到文件末尾
+      content += `\n${key}=${formattedValue}`;
     }
   });
   

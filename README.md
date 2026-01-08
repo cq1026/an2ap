@@ -43,16 +43,19 @@ npm install
 
 ### 2. 配置环境变量
 
-复制 `.env.example` 为 `.env` 并编辑配置：
+首次启动时，如果 `.env` 和 `config.json` 不存在，系统会自动创建默认配置文件。
+
+你也可以手动复制示例文件：
 
 ```bash
 cp .env.example .env
+cp config.json.example config.json
 ```
 
 编辑 `.env` 文件配置必要参数：
 
 ```env
-# 必填配置
+# 必填配置（留空则自动生成随机凭据）
 API_KEY=sk-text
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=admin123
@@ -102,8 +105,8 @@ npm start
 
 ```
 ├── antigravity2api-win-x64.exe  # 二进制文件
-├── .env                          # 环境变量配置（必需）
-├── config.json                   # 基础配置（必需）
+├── .env                          # 环境变量配置（可选，首次启动自动创建）
+├── config.json.example           # 配置示例文件（必需）
 ├── public/                       # 静态文件目录（必需）
 │   ├── index.html
 │   ├── style.css
@@ -154,7 +157,8 @@ chmod +x antigravity2api-linux-x64
 ### 二进制部署说明
 
 - **无需 Node.js**：二进制文件已包含 Node.js 运行时
-- **配置文件**：`.env` 和 `config.json` 必须与二进制文件在同一目录
+- **自动配置**：首次启动时自动从 `config.json.example` 创建 `config.json`
+- **配置文件**：`config.json.example` 必须与二进制文件在同一目录
 - **静态文件**：`public/` 目录必须与二进制文件在同一目录
 - **数据持久化**：`data/` 目录会自动创建，用于存储 Token 数据
 - **跨平台**：支持 Windows、Linux、macOS（x64 和 ARM64）
@@ -450,7 +454,11 @@ curl http://localhost:8045/v1/chat/completions \
 
 ### 1. config.json（基础配置）
 
-基础配置文件，包含服务器、API 和默认参数设置：
+基础配置文件，包含服务器、API 和默认参数设置。
+
+首次启动时，如果 `config.json` 不存在，系统会自动从 `config.json.example` 复制一份默认配置。
+
+配置示例：
 
 ```json
 {
@@ -588,9 +596,10 @@ npm run login
 │   ├── test-image-generation.js # 图片生成测试
 │   ├── test-token-rotation.js # Token 轮换测试
 │   └── test-transform.js   # 转换测试
-├── .env                    # 环境变量配置（敏感信息）
+├── .env                    # 环境变量配置（敏感信息，自动生成）
 ├── .env.example            # 环境变量配置示例
-├── config.json             # 基础配置文件
+├── config.json             # 基础配置文件（自动生成）
+├── config.json.example     # 基础配置示例
 ├── Dockerfile              # Docker 构建文件
 ├── docker-compose.yml      # Docker Compose 配置
 └── package.json            # 项目配置
@@ -876,11 +885,12 @@ src/utils/toolConverter.js  # 统一的工具定义转换
 
 ## 注意事项
 
-1. 首次使用需要复制 `.env.example` 为 `.env` 并配置
-2. 运行 `npm run login` 获取 Token
-3. `.env` 和 `data/accounts.json` 包含敏感信息，请勿泄露
-4. 支持多账号轮换，提高可用性
-5. Token 会自动刷新，无需手动维护
+1. 首次启动时会自动创建 `.env` 和 `config.json`（如果不存在）
+2. 如果未配置凭据，系统会自动生成随机凭据并在启动时显示
+3. 运行 `npm run login` 获取 Token
+4. `.env`、`config.json` 和 `data/accounts.json` 包含敏感信息，请勿泄露
+5. 支持多账号轮换，提高可用性
+6. Token 会自动刷新，无需手动维护
 
 ## License
 
