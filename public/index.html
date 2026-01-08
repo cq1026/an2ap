@@ -261,6 +261,13 @@ html.tab-logs .tab[data-tab="logs"] {
                                         <input type="text" name="HOST" placeholder="0.0.0.0">
                                     </div>
                                 </div>
+                                <div class="form-group compact">
+                                    <label>API 环境 <span class="help-tip" data-tooltip="选择使用 sandbox 或 production 环境的 API 接口">?</span></label>
+                                    <select name="API_USE" id="apiUseSelect">
+                                        <option value="sandbox">Sandbox (测试)</option>
+                                        <option value="production">Production (生产)</option>
+                                    </select>
+                                </div>
                                 <div class="form-row-inline">
                                     <div class="form-group compact">
                                         <label>最大请求大小</label>
@@ -339,6 +346,13 @@ html.tab-logs .tab[data-tab="logs"] {
                                             <span class="slider"></span>
                                         </label>
                                     </div>
+                                    <div class="form-group compact switch-group">
+                                        <label>假非流 <span class="help-tip" data-tooltip="非流式请求使用流式获取数据，最终返回非流式格式的JSON（更快）">?</span></label>
+                                        <label class="switch">
+                                            <input type="checkbox" name="FAKE_NON_STREAM" checked>
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
                                 </div>
                                 <div class="form-row-inline">
                                     <div class="form-group compact">
@@ -350,12 +364,12 @@ html.tab-logs .tab[data-tab="logs"] {
                                     </div>
                                 </div>
                                      <div class="form-group compact">
-                                         <label>反代系统提示词</label>
-                                         <textarea name="SYSTEM_INSTRUCTION" rows="3" placeholder="反代系统提示词（如萌萌）"></textarea>
+                                         <label>反代系统提示词 <span class="restore-default" onclick="restoreDefaultSystemInstruction()" title="恢复默认">↻</span></label>
+                                         <textarea name="SYSTEM_INSTRUCTION" rows="3" placeholder="反代系统提示词（留空则不使用）"></textarea>
                                      </div>
                                      <div class="form-group compact">
-                                         <label>官方系统提示词 <span class="help-tip" data-tooltip="反重力官方要求的系统提示词（建议留空）">?</span></label>
-                                         <textarea name="OFFICIAL_SYSTEM_PROMPT" rows="5" placeholder="官方系统提示词"></textarea>
+                                         <label>官方系统提示词 <span class="help-tip" data-tooltip="反重力官方要求的系统提示词">?</span> <span class="restore-default" onclick="restoreDefaultOfficialSystemPrompt()" title="恢复默认">↻</span></label>
+                                         <textarea name="OFFICIAL_SYSTEM_PROMPT" rows="5" placeholder="官方系统提示词（留空则不使用）"></textarea>
                                      </div>
                                     </div>
 
@@ -364,20 +378,20 @@ html.tab-logs .tab[data-tab="logs"] {
                                      <h4>🔄 轮询与性能</h4>
                                      <div class="form-row-inline switch-row">
                                          <div class="form-group compact switch-group">
-                                             <label>透传签名 <span class="help-tip" data-tooltip="将响应中的thoughtSignature透传到客户端">?</span></label>
+                                              <label>透传签名 <span class="help-tip" data-tooltip="将响应中的thoughtSignature透传到客户端">?</span></label>
+                                              <label class="switch">
+                                                 <input type="checkbox" name="PASS_SIGNATURE_TO_CLIENT">
+                                                 <span class="slider"></span>
+                                             </label>
+                                         </div>
+                                         <div class="form-group compact switch-group">
+                                             <label>兜底签名 <span class="help-tip" data-tooltip="没有缓存签名时，使用内置默认签名自动补全">?</span></label>
                                              <label class="switch">
-                                            <input type="checkbox" name="PASS_SIGNATURE_TO_CLIENT">
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
-                                    <div class="form-group compact switch-group">
-                                        <label>兜底签名 <span class="help-tip" data-tooltip="没有缓存签名时，使用内置默认签名自动补全">?</span></label>
-                                        <label class="switch">
-                                            <input type="checkbox" name="USE_FALLBACK_SIGNATURE" checked>
-                                            <span class="slider"></span>
-                                        </label>
-                                    </div>
-                                </div>
+                                                 <input type="checkbox" name="USE_FALLBACK_SIGNATURE">
+                                                 <span class="slider"></span>
+                                             </label>
+                                         </div>
+                                     </div>
                                 <div class="form-row-inline switch-row">
                                     <div class="form-group compact switch-group">
                                         <label>缓存所有签名 <span class="help-tip" data-tooltip="开启后缓存所有签名">?</span></label>
