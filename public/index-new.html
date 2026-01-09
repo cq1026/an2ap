@@ -283,7 +283,7 @@
                     <input type="checkbox" className="toggle-input" checked={checked} onChange={() => {}} />
                     <span className="toggle-slider"></span>
                 </div>
-                <div className="toggle-label">
+                <div className="toggle-label" style={{ cursor: 'default' }}>
                     <span className="toggle-label-text">{label}</span>
                     {help && <span className="toggle-label-help">{help}</span>}
                 </div>
@@ -1856,8 +1856,8 @@
                             <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>安全与环境变量 (Env / Security)</h3>
                             <Input label="API Key" type="password" value={config.API_KEY || ''} onChange={(e) => setConfig({ ...config, API_KEY: e.target.value })} help="客户端调用 API 时所需的 Bearer Token" />
                             <div className="form-group">
-                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span>反代系统提示词 (System Instruction)</span>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <label className="form-label" style={{ margin: 0 }}>反代系统提示词 (System Instruction)</label>
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -1869,7 +1869,7 @@
                                     >
                                         <Icon name="RotateCcw" size={14} /> 恢复默认
                                     </button>
-                                </label>
+                                </div>
                                 <textarea className="form-textarea" rows={3} value={config.SYSTEM_INSTRUCTION || ''} onChange={(e) => setConfig({ ...config, SYSTEM_INSTRUCTION: e.target.value })} placeholder="输入反代系统提示词..."></textarea>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -1885,11 +1885,11 @@
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <span>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                    <label className="form-label" style={{ margin: 0 }}>
                                         官方系统提示词 (Official System Prompt)
                                         <span style={{ fontSize: '12px', color: 'var(--zinc-500)', marginLeft: '8px' }}>反重力官方要求的系统提示词</span>
-                                    </span>
+                                    </label>
                                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                         {!isOfficialPromptLocked && (
                                             <button
@@ -1909,7 +1909,7 @@
                                             <Icon name={isOfficialPromptLocked ? "Lock" : "Unlock"} size={16} />
                                         </button>
                                     </div>
-                                </label>
+                                </div>
                                 <textarea
                                     className="form-textarea"
                                     rows={5}
@@ -1919,7 +1919,6 @@
                                     readOnly={isOfficialPromptLocked}
                                     style={{ opacity: isOfficialPromptLocked ? 0.7 : 1, cursor: isOfficialPromptLocked ? 'not-allowed' : 'text' }}
                                 ></textarea>
-                                <p className="form-help" style={{ color: 'var(--red-500)', fontWeight: 500 }}>⚠️ 警告：修改官方系统提示词可能导致 429 错误，请谨慎操作！</p>
                             </div>
                         </section>
 
@@ -1961,7 +1960,7 @@
                             onClose={() => setPasswordModal({ isOpen: false })}
                             onConfirm={handlePasswordConfirm}
                             title="解锁官方系统提示词"
-                            message="⚠️ 警告！修改官方系统提示词可能会导致 429 错误！请输入管理员密码以解锁："
+                            message="警告！修改官方系统提示词可能会导致 429 错误！请输入管理员密码以解锁："
                         />
                     </div>
                 </div>
@@ -2042,11 +2041,20 @@
             });
 
             useEffect(() => {
-                // 检查是否已登录
-                const token = localStorage.getItem('authToken');
-                if (token) {
-                    setView('dashboard');
-                }
+                // 检查是否已登录（通过尝试访问需要认证的接口）
+                const checkLoginStatus = async () => {
+                    try {
+                        const response = await fetch('/admin/tokens', {
+                            credentials: 'include'
+                        });
+                        if (response.status === 200) {
+                            setView('dashboard');
+                        }
+                    } catch (e) {
+                        // 登录检查失败，保持在登录页面
+                    }
+                };
+                checkLoginStatus();
             }, []);
 
             useEffect(() => {
