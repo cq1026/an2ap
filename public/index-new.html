@@ -34,7 +34,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, createContext, useContext } = React;
+        const { useState, useEffect, useRef, createContext, useContext } = React;
 
         // ==================== 全局常量 ====================
         const CLIENT_ID = '1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com';
@@ -84,6 +84,7 @@
                 RefreshCw: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>,
                 Pause: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>,
                 Search: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+                Menu: <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>,
             };
             return icons[name] || null;
         };
@@ -2442,6 +2443,7 @@
             const [darkMode, setDarkMode] = useState(() => {
                 return localStorage.getItem('darkMode') === 'true';
             });
+            const [showMobileMenu, setShowMobileMenu] = useState(false);
 
             useEffect(() => {
                 // 检查是否已登录（通过尝试访问需要认证的接口）
@@ -2538,20 +2540,69 @@
                                 <Icon name="Zap" size={18} /> Antigravity
                             </div>
                             <div className="mobile-header-actions">
+                                <div style={{ position: 'relative' }}>
+                                    <button
+                                        onClick={() => setShowMobileMenu(!showMobileMenu)}
+                                        className="btn btn-ghost btn-icon"
+                                        title="菜单"
+                                    >
+                                        <Icon name="Menu" size={18} />
+                                    </button>
+                                    {showMobileMenu && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            right: 0,
+                                            top: '100%',
+                                            marginTop: '8px',
+                                            background: 'var(--bg-card)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '8px',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                            minWidth: '160px',
+                                            zIndex: 100
+                                        }}>
+                                            <button
+                                                onClick={() => { setView('dashboard'); setShowMobileMenu(false); }}
+                                                className={`nav-item ${view === 'dashboard' ? 'active' : ''}`}
+                                                style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <Icon name="LayoutGrid" size={16} /> Token 管理
+                                            </button>
+                                            <button
+                                                onClick={() => { setView('settings'); setShowMobileMenu(false); }}
+                                                className={`nav-item ${view === 'settings' ? 'active' : ''}`}
+                                                style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <Icon name="Settings" size={16} /> 系统设置
+                                            </button>
+                                            <button
+                                                onClick={() => { setView('logs'); setShowMobileMenu(false); }}
+                                                className={`nav-item ${view === 'logs' ? 'active' : ''}`}
+                                                style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <Icon name="FileText" size={16} /> 日志管理
+                                            </button>
+                                            <div style={{ borderTop: '1px solid var(--border-color)', margin: '4px 0' }}></div>
+                                            <button
+                                                onClick={() => {
+                                                    localStorage.setItem('uiVersion', 'old');
+                                                    window.location.href = '/index.html';
+                                                }}
+                                                style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+                                            >
+                                                <Icon name="ExternalLink" size={16} /> 切换到经典版
+                                            </button>
+                                            <button
+                                                onClick={() => { setShowLogoutConfirm(true); setShowMobileMenu(false); }}
+                                                style={{ width: '100%', textAlign: 'left', padding: '12px 16px', border: 'none', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--red-500)' }}
+                                            >
+                                                <Icon name="LogOut" size={16} /> 退出登录
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                                 <button onClick={toggleDarkMode} className="btn btn-ghost btn-icon" title={darkMode ? '切换亮色模式' : '切换暗色模式'}>
                                     {darkMode ? <Icon name="Sun" size={18} /> : <Icon name="Moon" size={18} />}
-                                </button>
-                                <button onClick={() => setView(view === 'dashboard' ? 'settings' : 'dashboard')} className="btn btn-ghost btn-icon" title="切换页面">
-                                    <Icon name="Settings" size={18} />
-                                </button>
-                                <button onClick={() => {
-                                    localStorage.setItem('uiVersion', 'old');
-                                    window.location.href = '/index.html';
-                                }} className="btn btn-ghost btn-icon" title="切换到经典版">
-                                    <Icon name="RefreshCw" size={16} />
-                                </button>
-                                <button onClick={() => setShowLogoutConfirm(true)} className="btn btn-ghost btn-icon" title="退出登录">
-                                    <Icon name="LogOut" size={18} />
                                 </button>
                             </div>
                         </div>
