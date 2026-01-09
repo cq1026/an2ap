@@ -303,7 +303,7 @@ export function buildConfig(jsonConfig) {
     // 反代系统提示词（从 .env 读取，可在前端修改，空字符串代表不使用）
     systemInstruction: process.env.SYSTEM_INSTRUCTION ?? '',
     // 官方系统提示词（从 .env 读取，可在前端修改，空字符串代表不使用）
-    officialSystemPrompt: process.env.OFFICIAL_SYSTEM_PROMPT ?? '',
+    officialSystemPrompt: process.env.OFFICIAL_SYSTEM_PROMPT ?? DEFAULT_OFFICIAL_SYSTEM_PROMPT,
     // 官方提示词位置配置：'before' = 官方提示词在反代提示词前面，'after' = 官方提示词在反代提示词后面
     officialPromptPosition: jsonConfig.other?.officialPromptPosition || 'before',
     // 是否合并系统提示词为单个 part，false 则保留多 part 结构（需要先开启 useContextSystemPrompt）
