@@ -42,6 +42,9 @@
   --amber-800: #92400e;
   --amber-900: #78350f;
 
+  --yellow-200: #fef08a;
+  --yellow-400: #facc15;
+
   /* 语义化变量 */
   --bg-base: #fafafa;
   --bg-card: #ffffff;
@@ -766,6 +769,48 @@ input[type="number"] {
 .dark .stat-icon {
   background: var(--zinc-800);
   color: var(--zinc-400);
+}
+
+.stat-card.info {
+  border-left: 4px solid rgb(59, 130, 246);
+}
+
+.stat-card.info .stat-icon {
+  background: rgba(59, 130, 246, 0.1);
+  color: rgb(37, 99, 235);
+}
+
+.dark .stat-card.info .stat-icon {
+  background: rgba(59, 130, 246, 0.15);
+  color: rgb(96, 165, 250);
+}
+
+.stat-card.warning {
+  border-left: 4px solid var(--amber-500);
+}
+
+.stat-card.warning .stat-icon {
+  background: var(--amber-50);
+  color: var(--amber-800);
+}
+
+.dark .stat-card.warning .stat-icon {
+  background: rgba(120, 53, 15, 0.3);
+  color: var(--amber-400);
+}
+
+.stat-card.danger {
+  border-left: 4px solid var(--red-500);
+}
+
+.stat-card.danger .stat-icon {
+  background: var(--red-50);
+  color: var(--red-800);
+}
+
+.dark .stat-card.danger .stat-icon {
+  background: rgba(127, 29, 29, 0.3);
+  color: var(--red-400);
 }
 
 .stat-card.success {
@@ -1510,7 +1555,81 @@ svg.loading {
   border-color: #52525b;
 }
 
-/* ==================== 16. 响应式设计 ==================== */
+/* ==================== 16. Badge 组件 ==================== */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid;
+}
+
+.badge-info {
+  background: rgba(59, 130, 246, 0.1);
+  color: rgb(37, 99, 235);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+.dark .badge-info {
+  background: rgba(59, 130, 246, 0.15);
+  color: rgb(96, 165, 250);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.badge-warning {
+  background: var(--amber-50);
+  color: var(--amber-800);
+  border-color: var(--amber-200);
+}
+
+.dark .badge-warning {
+  background: rgba(120, 53, 15, 0.3);
+  color: var(--amber-400);
+  border-color: var(--amber-800);
+}
+
+.badge-danger {
+  background: var(--red-50);
+  color: var(--red-800);
+  border-color: var(--red-200);
+}
+
+.dark .badge-danger {
+  background: rgba(127, 29, 29, 0.3);
+  color: var(--red-400);
+  border-color: var(--red-800);
+}
+
+.badge-success {
+  background: var(--emerald-50);
+  color: var(--emerald-800);
+  border-color: var(--emerald-200);
+}
+
+.dark .badge-success {
+  background: rgba(6, 78, 59, 0.3);
+  color: var(--emerald-400);
+  border-color: var(--emerald-800);
+}
+
+.badge-secondary {
+  background: var(--zinc-100);
+  color: var(--zinc-600);
+  border-color: var(--zinc-200);
+}
+
+.dark .badge-secondary {
+  background: var(--zinc-800);
+  color: var(--zinc-400);
+  border-color: var(--zinc-700);
+}
+
+/* ==================== 17. 响应式设计 ==================== */
 @media (max-width: 767px) {
   .sidebar {
     display: none;
@@ -1558,6 +1677,31 @@ svg.loading {
 
   .toast {
     min-width: auto;
+  }
+
+  /* 日志页面：移动端隐藏桌面视图，显示卡片视图 */
+  .logs-desktop-view {
+    display: none !important;
+  }
+
+  .logs-mobile-view {
+    display: flex !important;
+  }
+
+  /* 按钮文本在移动端隐藏 */
+  .btn-text-desktop {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  /* 日志页面：桌面端显示表格视图，隐藏卡片视图 */
+  .logs-desktop-view {
+    display: block;
+  }
+
+  .logs-mobile-view {
+    display: none !important;
   }
 }
 
