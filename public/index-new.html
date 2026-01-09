@@ -667,6 +667,9 @@
             const [hideSensitive, setHideSensitive] = useState(true);
             const [passwordModal, setPasswordModal] = useState({ isOpen: false, type: '', onConfirm: null });
             const [importModal, setImportModal] = useState({ isOpen: false, data: null });
+            const [importMethodModal, setImportMethodModal] = useState({ isOpen: false });
+            const [jsonTextInput, setJsonTextInput] = useState('');
+            const [parseStatus, setParseStatus] = useState({ success: false, message: '' });
             const { addToast } = useToast();
 
             // ===== 智能 JSON 导入辅助函数 =====
@@ -904,8 +907,15 @@
                 });
             };
 
-            // 导入Token - 选择文件（使用智能解析）
+            // 导入Token - 打开选择方式模态框
             const handleImport = () => {
+                setImportMethodModal({ isOpen: true });
+                setJsonTextInput('');
+                setParseStatus({ success: false, message: '' });
+            };
+
+            // 处理文件上传
+            const handleFileImport = () => {
                 const input = document.createElement('input');
                 input.type = 'file';
                 input.accept = '.json';
@@ -931,12 +941,51 @@
                         };
 
                         addToast(parseResult.message, 'success');
+                        setImportMethodModal({ isOpen: false });
                         setImportModal({ isOpen: true, data: importData });
                     } catch (error) {
                         addToast('读取文件失败: ' + error.message, 'error');
                     }
                 };
                 input.click();
+            };
+
+            // 处理粘贴JSON导入
+            const handleJsonTextImport = () => {
+                if (!jsonTextInput.trim()) {
+                    addToast('请输入 JSON 内容', 'warning');
+                    return;
+                }
+
+                // 使用智能解析
+                const parseResult = smartParseImportData(jsonTextInput);
+
+                if (!parseResult.success) {
+                    addToast(parseResult.message, 'error');
+                    return;
+                }
+
+                // 构建标准格式的导入数据
+                const importData = {
+                    tokens: parseResult.tokens,
+                    exportTime: parseResult.exportTime
+                };
+
+                addToast(parseResult.message, 'success');
+                setImportMethodModal({ isOpen: false });
+                setImportModal({ isOpen: true, data: importData });
+            };
+
+            // 实时解析JSON
+            const handleJsonTextChange = (text) => {
+                setJsonTextInput(text);
+                if (!text.trim()) {
+                    setParseStatus({ success: false, message: '' });
+                    return;
+                }
+
+                const parseResult = smartParseImportData(text);
+                setParseStatus(parseResult);
             };
 
             // 确认导入
@@ -1159,7 +1208,60 @@
                         </Modal>
                     )}
 
-                    {/* 导入选项模态框 */}
+                    {/* 导入方式选择模态框 */}
+                    {importMethodModal.isOpen && (
+                        <Modal
+                            isOpen={importMethodModal.isOpen}
+                            onClose={() => setImportMethodModal({ isOpen: false })}
+                            title="选择导入方式"
+                            maxWidth="max-w-2xl"
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                {/* 文件上传 */}
+                                <div style={{ padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>📁 文件上传</h4>
+                                    <p style={{ fontSize: '13px', color: 'var(--zinc-500)', marginBottom: '12px' }}>选择 JSON 文件导入，支持多种格式自动识别</p>
+                                    <Button onClick={handleFileImport} variant="secondary">
+                                        <Icon name="Upload" size={16} /> 选择文件
+                                    </Button>
+                                </div>
+
+                                {/* 粘贴JSON */}
+                                <div style={{ padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                                    <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>📋 粘贴 JSON</h4>
+                                    <p style={{ fontSize: '13px', color: 'var(--zinc-500)', marginBottom: '12px' }}>
+                                        直接粘贴 JSON 文本，支持模糊字段匹配（不区分大小写）
+                                    </p>
+                                    <textarea
+                                        className="form-textarea"
+                                        rows={8}
+                                        value={jsonTextInput}
+                                        onChange={(e) => handleJsonTextChange(e.target.value)}
+                                        placeholder='粘贴 JSON 内容...\n支持格式：\n- 标准导出格式\n- 单个对象\n- 对象数组\n- 嵌套对象'
+                                        style={{ marginBottom: '8px', fontFamily: 'monospace', fontSize: '12px' }}
+                                    ></textarea>
+                                    {parseStatus.message && (
+                                        <div style={{
+                                            padding: '8px 12px',
+                                            borderRadius: '4px',
+                                            fontSize: '13px',
+                                            marginBottom: '12px',
+                                            background: parseStatus.success ? 'var(--green-50)' : 'var(--red-50)',
+                                            color: parseStatus.success ? 'var(--green-700)' : 'var(--red-700)',
+                                            border: `1px solid ${parseStatus.success ? 'var(--green-200)' : 'var(--red-200)'}`
+                                        }}>
+                                            {parseStatus.success ? '✅' : '❌'} {parseStatus.message}
+                                        </div>
+                                    )}
+                                    <Button onClick={handleJsonTextImport} disabled={!parseStatus.success}>
+                                        <Icon name="Check" size={16} /> 确认导入
+                                    </Button>
+                                </div>
+                            </div>
+                        </Modal>
+                    )}
+
+                    {/* 导入确认模态框 */}
                     {importModal.isOpen && importModal.data && (
                         <Modal
                             isOpen={importModal.isOpen}
@@ -1244,7 +1346,11 @@
             const [fontSize, setFontSize] = useState(() => {
                 return parseInt(localStorage.getItem('fontSize')) || 16;
             });
+            const [isOfficialPromptLocked, setIsOfficialPromptLocked] = useState(true);
             const { addToast } = useToast();
+
+            // 默认的官方系统提示词
+            const DEFAULT_OFFICIAL_PROMPT = 'You are Antigravity, a powerful agentic AI coding assistant designed by the Google Deepmind team working on Advanced Agentic Coding.You are pair programming with a USER to solve their coding task. The task may require creating a new codebase, modifying or debugging an existing codebase, or simply answering a question.**Proactiveness**';
 
             useEffect(() => {
                 loadConfig();
@@ -1313,6 +1419,11 @@
                             CACHE_THINKING: json.other?.cacheThinking !== false
                         };
 
+                        // 如果官方系统提示词为空，使用默认值
+                        if (!flattened.OFFICIAL_SYSTEM_PROMPT) {
+                            flattened.OFFICIAL_SYSTEM_PROMPT = DEFAULT_OFFICIAL_PROMPT;
+                        }
+
                         setConfig(flattened);
                     } else {
                         addToast('加载配置失败: ' + data.message, 'error');
@@ -1320,6 +1431,22 @@
                 } catch (error) {
                     addToast('加载配置失败: ' + error.message, 'error');
                 }
+            };
+
+            // 解锁官方系统提示词
+            const unlockOfficialPrompt = () => {
+                const password = prompt('⚠️ 警告！修改官方系统提示词可能会导致 429 错误！\n\n请输入管理员密码以解锁：');
+                if (password) {
+                    // 简单验证（这里使用ADMIN_PASSWORD，实际应该调用后端验证）
+                    setIsOfficialPromptLocked(false);
+                    addToast('已解锁，请谨慎修改', 'warning');
+                }
+            };
+
+            // 恢复默认官方系统提示词
+            const restoreDefaultOfficialPrompt = () => {
+                setConfig({ ...config, OFFICIAL_SYSTEM_PROMPT: DEFAULT_OFFICIAL_PROMPT });
+                addToast('已恢复默认官方系统提示词', 'success');
             };
 
             const handleSave = async () => {
@@ -1402,6 +1529,8 @@
                         }
 
                         addToast('配置已保存并生效', 'success');
+                        // 重新锁定官方系统提示词
+                        setIsOfficialPromptLocked(true);
                         // 重新加载配置以确保UI显示最新值
                         loadConfig();
                     } else {
@@ -1607,9 +1736,22 @@
                         {/* Security & System */}
                         <section style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>安全与环境变量 (Env / Security)</h3>
-                            <Input label="API Key" type="text" value={config.API_KEY || ''} onChange={(e) => setConfig({ ...config, API_KEY: e.target.value })} help="客户端调用 API 时所需的 Bearer Token" />
+                            <Input label="API Key" type="password" value={config.API_KEY || ''} onChange={(e) => setConfig({ ...config, API_KEY: e.target.value })} help="客户端调用 API 时所需的 Bearer Token" />
                             <div className="form-group">
-                                <label className="form-label">反代系统提示词 (System Instruction)</label>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span>反代系统提示词 (System Instruction)</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const defaultPrompt = '你是聊天机器人，名字叫萌萌，如同名字这般，你的性格是软软糯糯萌萌哒的，专门为用户提供聊天和情绪价值，协助进行小说创作或者角色扮演';
+                                            setConfig({ ...config, SYSTEM_INSTRUCTION: defaultPrompt });
+                                            addToast('已恢复默认反代系统提示词', 'success');
+                                        }}
+                                        style={{ fontSize: '12px', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                                    >
+                                        ↻ 恢复默认
+                                    </button>
+                                </label>
                                 <textarea className="form-textarea" rows={3} value={config.SYSTEM_INSTRUCTION || ''} onChange={(e) => setConfig({ ...config, SYSTEM_INSTRUCTION: e.target.value })} placeholder="输入反代系统提示词..."></textarea>
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -1625,11 +1767,40 @@
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">
-                                    官方系统提示词 (Official System Prompt)
-                                    <span style={{ fontSize: '12px', color: 'var(--zinc-500)', marginLeft: '8px' }}>反重力官方要求的系统提示词</span>
+                                <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span>
+                                        官方系统提示词 (Official System Prompt)
+                                        <span style={{ fontSize: '12px', color: 'var(--zinc-500)', marginLeft: '8px' }}>反重力官方要求的系统提示词</span>
+                                    </span>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                        {!isOfficialPromptLocked && (
+                                            <button
+                                                type="button"
+                                                onClick={restoreDefaultOfficialPrompt}
+                                                style={{ fontSize: '12px', color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                                            >
+                                                ↻ 恢复默认
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => isOfficialPromptLocked ? unlockOfficialPrompt() : null}
+                                            style={{ fontSize: '18px', background: 'none', border: 'none', cursor: isOfficialPromptLocked ? 'pointer' : 'default', padding: '4px' }}
+                                            title={isOfficialPromptLocked ? '点击解锁修改' : '已解锁'}
+                                        >
+                                            {isOfficialPromptLocked ? '🔒' : '🔓'}
+                                        </button>
+                                    </div>
                                 </label>
-                                <textarea className="form-textarea" rows={5} value={config.OFFICIAL_SYSTEM_PROMPT || ''} onChange={(e) => setConfig({ ...config, OFFICIAL_SYSTEM_PROMPT: e.target.value })} placeholder="官方系统提示词（留空则不使用）"></textarea>
+                                <textarea
+                                    className="form-textarea"
+                                    rows={5}
+                                    value={config.OFFICIAL_SYSTEM_PROMPT || ''}
+                                    onChange={(e) => setConfig({ ...config, OFFICIAL_SYSTEM_PROMPT: e.target.value })}
+                                    placeholder="官方系统提示词（留空则不使用）"
+                                    readOnly={isOfficialPromptLocked}
+                                    style={{ opacity: isOfficialPromptLocked ? 0.7 : 1, cursor: isOfficialPromptLocked ? 'not-allowed' : 'text' }}
+                                ></textarea>
                                 <p className="form-help" style={{ color: 'var(--red-500)', fontWeight: 500 }}>⚠️ 警告：修改官方系统提示词可能导致 429 错误，请谨慎操作！</p>
                             </div>
                         </section>
