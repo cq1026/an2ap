@@ -1688,9 +1688,13 @@ svg.loading {
     display: flex !important;
   }
 
-  /* 按钮文本在移动端隐藏 */
+  /* 按钮文本响应式显示 */
   .btn-text-desktop {
     display: none;
+  }
+
+  .btn-text-mobile {
+    display: inline;
   }
 }
 
@@ -1702,6 +1706,15 @@ svg.loading {
 
   .logs-mobile-view {
     display: none !important;
+  }
+
+  /* 按钮文本响应式显示 */
+  .btn-text-desktop {
+    display: inline;
+  }
+
+  .btn-text-mobile {
+    display: none;
   }
 }
 
