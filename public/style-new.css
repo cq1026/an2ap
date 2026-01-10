@@ -771,9 +771,7 @@ input[type="number"] {
   color: var(--zinc-400);
 }
 
-.stat-card.info {
-  /* 去掉左侧边框，按照设计稿 */
-}
+
 
 .stat-card.info .stat-icon {
   background: rgba(59, 130, 246, 0.1);
@@ -785,9 +783,7 @@ input[type="number"] {
   color: rgb(96, 165, 250);
 }
 
-.stat-card.warning {
-  /* 去掉左侧边框，按照设计稿 */
-}
+
 
 .stat-card.warning .stat-icon {
   background: var(--amber-50);
@@ -799,9 +795,7 @@ input[type="number"] {
   color: var(--amber-400);
 }
 
-.stat-card.danger {
-  /* 去掉左侧边框，按照设计稿 */
-}
+
 
 .stat-card.danger .stat-icon {
   background: var(--red-50);
@@ -813,9 +807,7 @@ input[type="number"] {
   color: var(--red-400);
 }
 
-.stat-card.success {
-  /* 去掉左侧边框，按照设计稿 */
-}
+
 
 .stat-card.success .stat-icon {
   background: var(--emerald-50);
@@ -1220,11 +1212,16 @@ input[type="number"] {
 
 .quota-refresh.loading svg {
   animation: spin 1s linear infinite;
+  transform-origin: center;
 }
 
-/* 全局刷新按钮loading动画 - SVG本身带loading类 */
+/* 全局刷新按钮loading动画 */
+.loading,
 svg.loading {
   animation: spin 1s linear infinite;
+  transform-origin: center !important;
+  display: inline-block;
+  /* Ensure transform applies */
 }
 
 .quota-group {
@@ -1405,16 +1402,7 @@ svg.loading {
   }
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
+/* Spin keyframes moved to global section */
 .animate-fade-in {
   animation: fadeIn 0.2s ease-out;
 }
@@ -1637,6 +1625,8 @@ svg.loading {
 
   .mobile-header {
     display: flex;
+    position: relative;
+    z-index: 100;
   }
 
   .page-container {
@@ -1699,6 +1689,7 @@ svg.loading {
 
   .logs-mobile-view {
     display: flex !important;
+    flex-direction: column;
   }
 
   /* 按钮文本响应式显示 */
@@ -1712,6 +1703,7 @@ svg.loading {
 }
 
 @media (min-width: 768px) {
+
   /* 日志页面：桌面端显示表格视图，隐藏卡片视图 */
   .logs-desktop-view {
     display: block;
@@ -1803,6 +1795,20 @@ svg.loading {
 }
 
 /* 最大宽度工具类 */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading {
+  animation: spin 1s linear infinite;
+}
+
 .max-w-sm {
   max-width: 384px;
 }
@@ -1821,4 +1827,288 @@ svg.loading {
 
 .max-w-2xl {
   max-width: 672px;
+}
+
+/* ==================== 18. 日志页面重构样式 ==================== */
+.logs-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .logs-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 16px;
+  }
+}
+
+.logs-stat-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: 16px;
+  cursor: pointer;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+@media (min-width: 768px) {
+  .logs-stat-card {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.logs-stat-card:hover {
+  background: var(--bg-hover);
+}
+
+.logs-stat-card.active {
+  background: var(--bg-card);
+  border-color: var(--zinc-900);
+  box-shadow: var(--shadow-md);
+}
+
+/* 语义化颜色边框 */
+.logs-stat-card.info.active {
+  border-color: #3b82f6;
+  /* Blue-500 */
+}
+
+.logs-stat-card.warning.active {
+  border-color: #f59e0b;
+  /* Amber-500 */
+}
+
+.logs-stat-card.danger.active {
+  border-color: #ef4444;
+  /* Red-500 */
+}
+
+.logs-stat-card.success.active {
+  border-color: #10b981;
+  /* Emerald-500 */
+}
+
+.dark .logs-stat-card.active {
+  border-color: var(--zinc-100);
+}
+
+/* 深色模式下保持语义颜色 */
+.dark .logs-stat-card.info.active {
+  border-color: #60a5fa;
+  /* Blue-400 */
+}
+
+.dark .logs-stat-card.warning.active {
+  border-color: #fbbf24;
+  /* Amber-400 */
+}
+
+.dark .logs-stat-card.danger.active {
+  border-color: #f87171;
+  /* Red-400 */
+}
+
+.dark .logs-stat-card.success.active {
+  border-color: #34d399;
+  /* Emerald-400 */
+}
+
+.logs-stat-content {
+  position: relative;
+  z-index: 10;
+}
+
+.logs-stat-label {
+  font-size: 12px;
+  color: var(--zinc-500);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+@media (min-width: 768px) {
+  .logs-stat-label {
+    margin-bottom: 0;
+  }
+}
+
+.logs-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+@media (min-width: 768px) {
+  .logs-stat-value {
+    font-size: 24px;
+  }
+}
+
+.logs-stat-icon-bg {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  color: var(--zinc-300);
+  transform: scale(1.5);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark .logs-stat-icon-bg {
+  color: var(--zinc-700);
+}
+
+@media (min-width: 768px) {
+  .logs-stat-icon-bg {
+    position: static;
+    right: auto;
+    bottom: auto;
+    transform: none;
+    opacity: 1;
+    color: var(--zinc-400);
+  }
+
+  .dark .logs-stat-icon-bg {
+    color: var(--zinc-600);
+  }
+}
+
+/* 按钮 Dark 变体 (对应设计稿中的 autoRefresh 开启状态) */
+.btn-dark {
+  background: var(--zinc-900);
+  color: white;
+  border: 1px solid var(--zinc-900);
+}
+
+.btn-dark:hover {
+  background: var(--zinc-800);
+}
+
+.dark .btn-dark {
+  background: var(--zinc-100);
+  color: var(--zinc-900);
+  border-color: var(--zinc-100);
+}
+
+.dark .btn-dark:hover {
+  background: var(--zinc-200);
+}
+
+/* 搜索高亮 */
+.text-highlight {
+  background-color: var(--yellow-200);
+  border-radius: 2px;
+  padding: 0 2px;
+  color: black;
+}
+
+/* 移动端日志列表 */
+.logs-list-item {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.15s;
+}
+
+.logs-list-item:hover {
+  background: var(--bg-hover);
+}
+
+.logs-list-item:last-child {
+  border-bottom: none;
+}
+
+.logs-message-box {
+  background: var(--zinc-50);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--zinc-200);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--zinc-700);
+}
+
+.dark .logs-message-box {
+  background: var(--zinc-900);
+  border-color: var(--zinc-800);
+  color: var(--zinc-300);
+}
+
+.copy-btn-mobile {
+  font-size: 12px;
+  color: var(--zinc-500);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
+.copy-btn-mobile:hover {
+  background: var(--zinc-100);
+  color: var(--zinc-900);
+}
+
+.dark .copy-btn-mobile:hover {
+  background: var(--zinc-800);
+  color: var(--zinc-100);
+}
+
+/* 移动端/桌面端搜索栏布局适配 */
+.logs-actions-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .logs-actions-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.search-container {
+  position: relative;
+  flex: 1;
+  max-width: 100%;
+}
+
+@media (min-width: 768px) {
+  .search-container {
+    max-width: 400px;
+  }
+}
+
+.logs-action-buttons {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+@media (min-width: 768px) {
+  .logs-action-buttons {
+    padding-bottom: 0;
+    overflow-x: visible;
+  }
 }

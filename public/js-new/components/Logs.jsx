@@ -31,6 +31,7 @@ const Logs = () => {
     const loadLogs = async (append = false) => {
         try {
             setIsLoading(true);
+            const startTime = Date.now();
             const currentOffset = append ? offset : 0;
             if (!append) setOffset(0);
 
@@ -48,6 +49,12 @@ const Logs = () => {
                 const newLogs = append ? [...logs, ...data.data.logs] : data.data.logs;
                 setLogs(newLogs);
                 setTotal(data.data.total);
+            }
+
+            // 确保至少显示 600ms 的加载动画
+            const elapsed = Date.now() - startTime;
+            if (elapsed < 600) {
+                await new Promise(resolve => setTimeout(resolve, 600 - elapsed));
             }
         } catch (error) {
             if (error.message !== 'Unauthorized') {
@@ -116,6 +123,12 @@ const Logs = () => {
         }
     };
 
+    const handleManualRefresh = async () => {
+        await loadLogs();
+        await loadLogStats();
+        addToast('日志已刷新', 'success');
+    };
+
     const handleExportLogs = () => {
         if (logs.length === 0) {
             addToast('没有日志可导出', 'warning');
@@ -176,144 +189,81 @@ const Logs = () => {
         return !/^[═─=\-*_~]+$/.test(message);
     });
 
+    const highlightMessage = (message) => {
+        if (!searchKeyword) return { __html: message };
+        const regex = new RegExp(`(${searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return { __html: message.replace(regex, '<mark class="text-highlight">$1</mark>') };
+    };
+
     return (
         <div className="page-container animate-fade-in">
-            {/* Stats Grid - 改进的统计卡片设计 */}
-            <div className="stats-grid">
-                <Card
-                    className={`stat-card ${currentLevel === 'all' ? 'active' : ''}`}
+            {/* Stats Grid */}
+            <div className="logs-stats-grid">
+                <div
+                    className={`logs-stat-card ${currentLevel === 'all' ? 'active' : ''}`}
                     onClick={() => handleFilterLevel('all')}
-                    style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                 >
-                    <div className="stat-info" style={{ position: 'relative', zIndex: 1 }}>
-                        <div className="stat-label">全部日志</div>
-                        <div className="stat-value">{stats.total}</div>
+                    <div className="logs-stat-content">
+                        <div className="logs-stat-label">全部日志</div>
+                        <div className="logs-stat-value">{stats.total}</div>
                     </div>
-                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
+                    <div className="logs-stat-icon-bg">
                         <Icon name="FileText" />
                     </div>
-                    {/* 背景装饰图标 - 右上角 */}
-                    <div style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '12px',
-                        opacity: 0.08,
-                        transform: 'scale(1.5)',
-                        zIndex: 0
-                    }}>
-                        <Icon name="FileText" size={32} />
-                    </div>
-                </Card>
-                <Card
-                    className={`stat-card info ${currentLevel === 'info' ? 'active' : ''}`}
+                </div>
+                <div
+                    className={`logs-stat-card info ${currentLevel === 'info' ? 'active' : ''}`}
                     onClick={() => handleFilterLevel('info')}
-                    style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                 >
-                    <div className="stat-info" style={{ position: 'relative', zIndex: 1 }}>
-                        <div className="stat-label">信息</div>
-                        <div className="stat-value">{stats.info}</div>
+                    <div className="logs-stat-content">
+                        <div className="logs-stat-label">信息</div>
+                        <div className="logs-stat-value">{stats.info}</div>
                     </div>
-                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
+                    <div className="logs-stat-icon-bg">
                         <Icon name="Info" />
                     </div>
-                    <div style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '12px',
-                        opacity: 0.08,
-                        transform: 'scale(1.5)',
-                        zIndex: 0
-                    }}>
-                        <Icon name="Info" size={32} />
-                    </div>
-                </Card>
-                <Card
-                    className={`stat-card warning ${currentLevel === 'warn' ? 'active' : ''}`}
+                </div>
+                <div
+                    className={`logs-stat-card warning ${currentLevel === 'warn' ? 'active' : ''}`}
                     onClick={() => handleFilterLevel('warn')}
-                    style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                 >
-                    <div className="stat-info" style={{ position: 'relative', zIndex: 1 }}>
-                        <div className="stat-label">警告</div>
-                        <div className="stat-value">{stats.warn}</div>
+                    <div className="logs-stat-content">
+                        <div className="logs-stat-label">警告</div>
+                        <div className="logs-stat-value">{stats.warn}</div>
                     </div>
-                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
+                    <div className="logs-stat-icon-bg">
                         <Icon name="AlertTriangle" />
                     </div>
-                    <div style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '12px',
-                        opacity: 0.08,
-                        transform: 'scale(1.5)',
-                        zIndex: 0
-                    }}>
-                        <Icon name="AlertTriangle" size={32} />
-                    </div>
-                </Card>
-                <Card
-                    className={`stat-card danger ${currentLevel === 'error' ? 'active' : ''}`}
+                </div>
+                <div
+                    className={`logs-stat-card danger ${currentLevel === 'error' ? 'active' : ''}`}
                     onClick={() => handleFilterLevel('error')}
-                    style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                 >
-                    <div className="stat-info" style={{ position: 'relative', zIndex: 1 }}>
-                        <div className="stat-label">错误</div>
-                        <div className="stat-value">{stats.error}</div>
+                    <div className="logs-stat-content">
+                        <div className="logs-stat-label">错误</div>
+                        <div className="logs-stat-value">{stats.error}</div>
                     </div>
-                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
+                    <div className="logs-stat-icon-bg">
                         <Icon name="AlertCircle" />
                     </div>
-                    <div style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '12px',
-                        opacity: 0.08,
-                        transform: 'scale(1.5)',
-                        zIndex: 0
-                    }}>
-                        <Icon name="AlertCircle" size={32} />
-                    </div>
-                </Card>
-                <Card
-                    className={`stat-card success ${currentLevel === 'request' ? 'active' : ''}`}
+                </div>
+                <div
+                    className={`logs-stat-card success ${currentLevel === 'request' ? 'active' : ''}`}
                     onClick={() => handleFilterLevel('request')}
-                    style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
                 >
-                    <div className="stat-info" style={{ position: 'relative', zIndex: 1 }}>
-                        <div className="stat-label">请求</div>
-                        <div className="stat-value">{stats.request}</div>
+                    <div className="logs-stat-content">
+                        <div className="logs-stat-label">请求</div>
+                        <div className="logs-stat-value">{stats.request}</div>
                     </div>
-                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
+                    <div className="logs-stat-icon-bg">
                         <Icon name="Globe" />
                     </div>
-                    <div style={{
-                        position: 'absolute',
-                        right: '12px',
-                        top: '12px',
-                        opacity: 0.08,
-                        transform: 'scale(1.5)',
-                        zIndex: 0
-                    }}>
-                        <Icon name="Globe" size={32} />
-                    </div>
-                </Card>
+                </div>
             </div>
 
-            {/* Actions Bar - 搜索框和按钮在同一行 */}
-            <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginTop: '24px',
-                marginBottom: '24px',
-                flexWrap: 'wrap',
-                alignItems: 'center'
-            }}>
-                {/* 搜索框 - 带内部图标 */}
-                <div style={{
-                    position: 'relative',
-                    flex: '1 1 auto',
-                    minWidth: '200px',
-                    maxWidth: '400px'
-                }}>
+            {/* Actions Bar */}
+            <div className="logs-actions-bar">
+                <div className="search-container">
                     <div style={{
                         position: 'absolute',
                         left: '12px',
@@ -333,23 +283,18 @@ const Logs = () => {
                         placeholder="搜索日志..."
                         value={searchKeyword}
                         onChange={(e) => setSearchKeyword(e.target.value)}
-                        style={{
-                            paddingLeft: '40px',
-                            width: '100%',
-                            position: 'relative',
-                            zIndex: 1
-                        }}
+                        style={{ paddingLeft: '40px' }}
                     />
                 </div>
 
-                {/* 操作按钮组 */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                    <Button variant="secondary" onClick={() => { loadLogs(); loadLogStats(); }}>
+                <div className="logs-action-buttons">
+                    <Button variant="secondary" onClick={handleManualRefresh}>
                         <Icon name="RefreshCw" size={16} className={isLoading ? "loading" : ""} />
                     </Button>
                     <Button
-                        variant={autoRefresh ? "primary" : "secondary"}
+                        variant={autoRefresh ? "dark" : "secondary"}
                         onClick={toggleAutoRefresh}
+                        className={autoRefresh ? "btn-dark" : ""}
                         style={{ whiteSpace: 'nowrap' }}
                     >
                         <Icon name={autoRefresh ? "Pause" : "RefreshCw"} size={16} />
@@ -371,217 +316,127 @@ const Logs = () => {
                 </div>
             </div>
 
-            {/* Desktop Table View */}
-            <Card className="logs-desktop-view">
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th style={{ width: '100px' }}>级别</th>
-                                <th style={{ width: '180px' }}>时间</th>
-                                <th>内容</th>
-                                <th style={{ width: '80px' }} className="text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredLogs.length === 0 ? (
-                                <tr>
-                                    <td colSpan="4" className="text-center" style={{ padding: '48px 24px' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                                            <Icon name="FileText" size={48} style={{ color: 'var(--zinc-300)', opacity: 0.5 }} />
-                                            <p style={{ color: 'var(--zinc-400)', fontSize: '14px' }}>
-                                                {searchKeyword ? '没有找到匹配的日志' : '暂无日志记录'}
-                                            </p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredLogs.map((log, index) => {
-                                    const time = new Date(log.timestamp).toLocaleString('zh-CN', {
-                                        hour12: false,
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        second: '2-digit'
-                                    });
+            {/* Content Area */}
+            <Card className="overflow-hidden">
+                {filteredLogs.length === 0 ? (
+                    <div style={{ padding: '48px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <Icon name="FileText" size={48} style={{ color: 'var(--zinc-300)', opacity: 0.5 }} />
+                        <p style={{ color: 'var(--zinc-400)', fontSize: '14px' }}>
+                            {searchKeyword ? '没有找到匹配的日志' : '暂无日志记录'}
+                        </p>
+                    </div>
+                ) : (
+                    <>
+                        {/* 1. Desktop View (Table) */}
+                        <div className="logs-desktop-view" style={{ overflowX: 'auto' }}>
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '100px' }}>级别</th>
+                                        <th style={{ width: '180px' }}>时间</th>
+                                        <th>内容</th>
+                                        <th style={{ width: '80px' }} className="text-center">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredLogs.map((log, index) => {
+                                        const time = new Date(log.timestamp).toLocaleString('zh-CN', {
+                                            hour12: false,
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit'
+                                        });
 
-                                    let message = log.message;
-                                    if (searchKeyword) {
-                                        const regex = new RegExp(`(${searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                                        message = message.replace(regex, '<mark style="background: var(--yellow-200); padding: 1px 3px; border-radius: 2px;">$1</mark>');
-                                    }
+                                        return (
+                                            <tr key={index} style={{ height: 'auto' }}>
+                                                <td style={{ padding: '8px 12px' }}>
+                                                    <span className={`badge ${getLevelBadgeClass(log.level)}`}>
+                                                        <Icon name={getLevelIcon(log.level)} size={12} />
+                                                        {log.level.toUpperCase()}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontSize: '13px', color: 'var(--zinc-500)', fontFamily: 'monospace', padding: '8px 12px' }}>
+                                                    {time}
+                                                </td>
+                                                <td style={{ padding: '8px 12px' }}>
+                                                    <div
+                                                        className="logs-message-box"
+                                                        style={{ margin: 0, padding: 0, border: 'none', background: 'transparent' }}
+                                                        dangerouslySetInnerHTML={highlightMessage(log.message)}
+                                                    />
+                                                </td>
+                                                <td className="text-center" style={{ padding: '8px 12px' }}>
+                                                    <button
+                                                        onClick={() => copyLogContent(log.message)}
+                                                        className="btn btn-ghost btn-icon btn-sm"
+                                                        title="复制内容"
+                                                    >
+                                                        <Icon name="Copy" size={14} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
 
-                                    return (
-                                        <tr key={index}>
-                                            <td>
-                                                <span className={`badge ${getLevelBadgeClass(log.level)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                    <Icon name={getLevelIcon(log.level)} size={12} />
-                                                    {log.level.toUpperCase()}
-                                                </span>
-                                            </td>
-                                            <td style={{ fontSize: '13px', color: 'var(--zinc-500)', fontFamily: 'monospace' }}>
+                        {/* 2. Mobile View (Card List) */}
+                        <div className="logs-mobile-view">
+                            {filteredLogs.map((log, index) => {
+                                const time = new Date(log.timestamp).toLocaleString('zh-CN', {
+                                    hour12: false,
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit'
+                                });
+
+                                return (
+                                    <div key={index} className="logs-list-item">
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                            <span className={`badge ${getLevelBadgeClass(log.level)}`}>
+                                                <Icon name={getLevelIcon(log.level)} size={12} />
+                                                {log.level.toUpperCase()}
+                                            </span>
+                                            <span style={{ fontSize: '12px', color: 'var(--zinc-400)', fontFamily: 'monospace' }}>
                                                 {time}
-                                            </td>
-                                            <td>
-                                                <div
-                                                    className="font-mono"
-                                                    style={{
-                                                        fontSize: '13px',
-                                                        lineHeight: '1.6',
-                                                        whiteSpace: 'pre-wrap',
-                                                        wordBreak: 'break-word',
-                                                        maxHeight: '120px',
-                                                        overflow: 'auto'
-                                                    }}
-                                                    dangerouslySetInnerHTML={{ __html: message }}
-                                                />
-                                            </td>
-                                            <td className="text-center">
-                                                <button
-                                                    onClick={() => copyLogContent(log.message)}
-                                                    className="btn btn-ghost btn-icon btn-sm"
-                                                    title="复制内容"
-                                                >
-                                                    <Icon name="Copy" size={14} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                            </span>
+                                        </div>
+
+                                        <div
+                                            className="logs-message-box"
+                                            dangerouslySetInnerHTML={highlightMessage(log.message)}
+                                        />
+
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                                            <button
+                                                onClick={() => copyLogContent(log.message)}
+                                                className="copy-btn-mobile"
+                                            >
+                                                <Icon name="Copy" size={12} />
+                                                <span>复制内容</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
 
                 {/* Load More */}
                 {logs.length < total && (
-                    <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)', textAlign: 'center' }}>
-                        <Button variant="secondary" onClick={handleLoadMore} loading={isLoading}>
+                    <div style={{ padding: '16px', borderTop: '1px solid var(--border-color)', textAlign: 'center', background: 'var(--bg-hover)' }}>
+                        <Button variant="secondary" onClick={handleLoadMore} loading={isLoading} style={{ minWidth: '200px' }}>
                             加载更多 ({logs.length}/{total})
                         </Button>
                     </div>
                 )}
             </Card>
-
-            {/* Mobile Card View - 改进的设计 */}
-            <div className="logs-mobile-view" style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {filteredLogs.length === 0 ? (
-                    <Card>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 24px', gap: '12px' }}>
-                            <Icon name="FileText" size={48} style={{ color: 'var(--zinc-300)', opacity: 0.5 }} />
-                            <p style={{ color: 'var(--zinc-400)', fontSize: '14px', textAlign: 'center' }}>
-                                {searchKeyword ? '没有找到匹配的日志' : '暂无日志记录'}
-                            </p>
-                        </div>
-                    </Card>
-                ) : (
-                    <>
-                        <Card style={{ overflow: 'hidden' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                {filteredLogs.map((log, index) => {
-                                    const time = new Date(log.timestamp).toLocaleString('zh-CN', {
-                                        hour12: false,
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                        second: '2-digit'
-                                    });
-
-                                    let message = log.message;
-                                    if (searchKeyword) {
-                                        const regex = new RegExp(`(${searchKeyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
-                                        message = message.replace(regex, '<mark style="background: var(--yellow-200); padding: 1px 3px; border-radius: 2px;">$1</mark>');
-                                    }
-
-                                    return (
-                                        <div
-                                            key={index}
-                                            style={{
-                                                padding: '16px',
-                                                borderBottom: index < filteredLogs.length - 1 ? '1px solid var(--border-color)' : 'none',
-                                                transition: 'background-color 0.15s'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-hover)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                                        >
-                                            {/* 头部：级别标签和时间 */}
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                <span className={`badge ${getLevelBadgeClass(log.level)}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                                                    <Icon name={getLevelIcon(log.level)} size={12} />
-                                                    {log.level.toUpperCase()}
-                                                </span>
-                                                <span style={{ fontSize: '11px', color: 'var(--zinc-400)', fontFamily: 'monospace' }}>
-                                                    {time}
-                                                </span>
-                                            </div>
-
-                                            {/* 日志内容 */}
-                                            <div
-                                                className="font-mono"
-                                                style={{
-                                                    fontSize: '12px',
-                                                    lineHeight: '1.6',
-                                                    color: 'var(--text-primary)',
-                                                    background: 'var(--zinc-50)',
-                                                    padding: '10px',
-                                                    borderRadius: '6px',
-                                                    border: '1px solid var(--zinc-100)',
-                                                    marginBottom: '12px',
-                                                    wordBreak: 'break-all',
-                                                    whiteSpace: 'pre-wrap'
-                                                }}
-                                                dangerouslySetInnerHTML={{ __html: message }}
-                                            />
-
-                                            {/* 操作按钮 */}
-                                            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                <button
-                                                    onClick={() => copyLogContent(log.message)}
-                                                    style={{
-                                                        fontSize: '12px',
-                                                        color: 'var(--zinc-500)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '4px',
-                                                        padding: '4px 8px',
-                                                        borderRadius: '4px',
-                                                        border: '1px solid transparent',
-                                                        background: 'transparent',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.color = 'var(--zinc-900)';
-                                                        e.currentTarget.style.background = 'var(--zinc-100)';
-                                                        e.currentTarget.style.borderColor = 'var(--zinc-200)';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.color = 'var(--zinc-500)';
-                                                        e.currentTarget.style.background = 'transparent';
-                                                        e.currentTarget.style.borderColor = 'transparent';
-                                                    }}
-                                                >
-                                                    <Icon name="Copy" size={12} />
-                                                    <span>复制内容</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
-                        {logs.length < total && (
-                            <div style={{ textAlign: 'center', padding: '16px 0' }}>
-                                <Button variant="secondary" onClick={handleLoadMore} loading={isLoading} style={{ width: '100%' }}>
-                                    加载更多 ({logs.length}/{total})
-                                </Button>
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
         </div>
     );
 };
