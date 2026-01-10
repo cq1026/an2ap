@@ -294,42 +294,57 @@ const Logs = () => {
             </div>
 
             {/* Actions Bar - 改进的响应式布局 */}
-            <div className="flex justify-between items-center mb-6" style={{ marginTop: '24px', flexWrap: 'wrap', gap: '12px' }}>
-                <div className="search-container" style={{ flex: '1 1 auto', minWidth: '200px', maxWidth: '400px', position: 'relative' }}>
-                    <Icon name="Search" size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--zinc-400)', pointerEvents: 'none' }} />
+            <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                marginTop: '24px',
+                marginBottom: '24px'
+            }}>
+                {/* 第一行：搜索框 */}
+                <div style={{ position: 'relative', flex: '1', maxWidth: '400px' }}>
+                    <Icon name="Search" size={16} style={{
+                        position: 'absolute',
+                        left: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'var(--zinc-400)',
+                        pointerEvents: 'none',
+                        zIndex: 1
+                    }} />
                     <input
                         type="text"
                         className="form-input"
-                        placeholder="搜索日志内容..."
+                        placeholder="搜索日志..."
                         value={searchKeyword}
                         onChange={(e) => setSearchKeyword(e.target.value)}
                         style={{ paddingLeft: '40px', width: '100%' }}
                     />
                 </div>
-                <div className="flex gap-2" style={{ flexWrap: 'nowrap' }}>
-                    <Button variant="secondary" onClick={() => { loadLogs(); loadLogStats(); }} title="刷新">
+
+                {/* 第二行：操作按钮 */}
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                    <Button variant="secondary" onClick={() => { loadLogs(); loadLogStats(); }}>
                         <Icon name="RefreshCw" size={16} className={isLoading ? "loading" : ""} />
-                        <span className="btn-text-desktop">刷新</span>
                     </Button>
                     <Button
                         variant={autoRefresh ? "primary" : "secondary"}
                         onClick={toggleAutoRefresh}
-                        title={autoRefresh ? "停止自动刷新" : "开启自动刷新"}
+                        style={{ whiteSpace: 'nowrap' }}
                     >
                         <Icon name={autoRefresh ? "Pause" : "RefreshCw"} size={16} />
-                        <span className="btn-text-desktop">{autoRefresh ? '停止' : '自动'}</span>
+                        <span className="btn-text-desktop">{autoRefresh ? '停止刷新' : '自动刷新'}</span>
+                        <span className="btn-text-mobile">{autoRefresh ? '停止' : '自动'}</span>
                     </Button>
-                    <Button variant="secondary" onClick={handleExportLogs} title="导出日志">
+                    <Button variant="secondary" onClick={handleExportLogs}>
                         <Icon name="Download" size={16} />
-                        <span className="btn-text-desktop">导出</span>
                     </Button>
                     <Button variant="danger" onClick={() => {
                         if (confirm('确定要清空所有日志吗？此操作不可恢复。')) {
                             handleClearLogs();
                         }
-                    }} title="清空日志">
+                    }}>
                         <Icon name="Trash2" size={16} />
-                        <span className="btn-text-desktop">清空</span>
                     </Button>
                 </div>
             </div>
