@@ -772,7 +772,7 @@ input[type="number"] {
 }
 
 .stat-card.info {
-  border-left: 4px solid rgb(59, 130, 246);
+  /* 去掉左侧边框，按照设计稿 */
 }
 
 .stat-card.info .stat-icon {
@@ -786,7 +786,7 @@ input[type="number"] {
 }
 
 .stat-card.warning {
-  border-left: 4px solid var(--amber-500);
+  /* 去掉左侧边框，按照设计稿 */
 }
 
 .stat-card.warning .stat-icon {
@@ -800,7 +800,7 @@ input[type="number"] {
 }
 
 .stat-card.danger {
-  border-left: 4px solid var(--red-500);
+  /* 去掉左侧边框，按照设计稿 */
 }
 
 .stat-card.danger .stat-icon {
@@ -814,7 +814,7 @@ input[type="number"] {
 }
 
 .stat-card.success {
-  border-left: 4px solid var(--emerald-500);
+  /* 去掉左侧边框，按照设计稿 */
 }
 
 .stat-card.success .stat-icon {
@@ -1645,6 +1645,19 @@ svg.loading {
 
   .stats-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .stat-value {
+    font-size: 24px;
   }
 
   .modal-container {
