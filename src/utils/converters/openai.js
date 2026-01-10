@@ -134,7 +134,7 @@ export function generateRequestBody(openaiMessages, modelName, parameters, opena
 
   const tools = convertOpenAIToolsToAntigravity(openaiTools, token.sessionId, actualModelName);
   const hasTools = tools && tools.length > 0;
-
+  //console.log(JSON.stringify(tools, null, 2))
   return buildRequestBody({
     contents: openaiMessageToAntigravity(filteredMessages, enableThinking, actualModelName, token.sessionId, hasTools),
     tools: tools,

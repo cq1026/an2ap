@@ -552,11 +552,22 @@ npm run docker:build
 │   ├── accounts.json       # Token 存储（自动生成）
 │   └── quotas.json         # 额度缓存（自动生成）
 ├── public/
+│   ├── assets/             # 静态资源
+│   ├── images/             # 生成的图片存储目录
 │   ├── index.html          # Web 管理界面
-│   ├── app.js              # 前端逻辑
-│   ├── style.css           # 界面样式
-│   └── images/             # 生成的图片存储目录
+│   ├── js/                 # 前端逻辑
+│   │   ├── auth.js
+│   │   ├── config.js
+│   │   ├── logs.js         # 日志管理
+│   │   ├── main.js
+│   │   ├── quota.js
+│   │   ├── tokens.js
+│   │   ├── ui.js
+│   │   └── utils.js
+│   └── style.css           # 界面样式
 ├── scripts/
+│   ├── build-docker.js     # Docker 构建脚本
+│   ├── build.js            # 项目构建脚本
 │   ├── oauth-server.js     # OAuth 登录服务
 │   └── refresh-tokens.js   # Token 刷新脚本
 ├── src/
@@ -568,9 +579,6 @@ npm run docker:build
 │   │   ├── token_manager.js # Token 管理（含轮询策略）
 │   │   ├── token_store.js  # Token 文件存储（异步读写）
 │   │   └── quota_manager.js # 额度缓存管理
-│   ├── routes/
-│   │   ├── admin.js        # 管理接口路由
-│   │   └── sd.js           # SD WebUI 兼容接口
 │   ├── bin/
 │   │   ├── antigravity_requester_android_arm64   # Android ARM64 TLS 请求器
 │   │   ├── antigravity_requester_linux_amd64     # Linux AMD64 TLS 请求器
@@ -581,15 +589,33 @@ npm run docker:build
 │   ├── constants/
 │   │   ├── index.js        # 应用常量定义
 │   │   └── oauth.js        # OAuth 常量
+│   ├── routes/
+│   │   ├── admin.js        # 管理接口路由
+│   │   ├── claude.js       # Claude 路由
+│   │   ├── gemini.js       # Gemini 路由
+│   │   ├── openai.js       # OpenAI 路由
+│   │   └── sd.js           # SD WebUI 兼容接口
 │   ├── server/
-│   │   └── index.js        # 主服务器（含内存管理和心跳）
+│   │   ├── handlers/       # 请求处理器
+│   │   │   ├── claude.js
+│   │   │   ├── gemini.js
+│   │   │   └── openai.js
+│   │   ├── index.js        # 主服务器（含内存管理和心跳）
+│   │   └── stream.js       # 流式响应处理
 │   ├── utils/
 │   │   ├── configReloader.js # 配置热重载
+│   │   ├── converters/     # 格式转换器
+│   │   │   ├── claude.js
+│   │   │   ├── common.js
+│   │   │   ├── gemini.js
+│   │   │   └── openai.js
 │   │   ├── deepMerge.js    # 深度合并工具
 │   │   ├── envParser.js    # 环境变量解析
 │   │   ├── errors.js       # 统一错误处理
+│   │   ├── httpClient.js   # HTTP 客户端
 │   │   ├── idGenerator.js  # ID 生成器
 │   │   ├── imageStorage.js # 图片存储
+│   │   ├── ipBlockManager.js # IP 封禁管理
 │   │   ├── logger.js       # 日志模块
 │   │   ├── memoryManager.js # 智能内存管理
 │   │   ├── parameterNormalizer.js # 统一参数处理
@@ -598,11 +624,6 @@ npm run docker:build
 │   │   ├── toolConverter.js # 工具定义转换
 │   │   ├── toolNameCache.js # 工具名称缓存
 │   │   └── utils.js        # 工具函数（重导出）
-│   │   └── converters/     # 格式转换器
-│   │       ├── common.js   # 公共函数
-│   │       ├── openai.js   # OpenAI 格式
-│   │       ├── claude.js   # Claude 格式
-│   │       └── gemini.js   # Gemini 格式
 │   └── AntigravityRequester.js # TLS 指纹请求器封装
 ├── test/
 │   ├── test-request.js     # 请求测试

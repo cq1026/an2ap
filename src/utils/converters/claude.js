@@ -145,7 +145,6 @@ export function generateClaudeRequestBody(claudeMessages, modelName, parameters,
 
   const tools = convertClaudeToolsToAntigravity(claudeTools, token.sessionId, actualModelName);
   const hasTools = tools && tools.length > 0;
-
   return buildRequestBody({
     contents: claudeMessageToAntigravity(claudeMessages, enableThinking, actualModelName, token.sessionId, hasTools),
     tools: tools,
