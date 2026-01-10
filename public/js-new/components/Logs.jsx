@@ -189,16 +189,17 @@ const Logs = () => {
                         <div className="stat-label">全部日志</div>
                         <div className="stat-value">{stats.total}</div>
                     </div>
-                    <div className="stat-icon">
+                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
                         <Icon name="FileText" />
                     </div>
-                    {/* 背景装饰图标 */}
+                    {/* 背景装饰图标 - 右上角 */}
                     <div style={{
                         position: 'absolute',
-                        right: '8px',
-                        bottom: '8px',
-                        opacity: 0.1,
-                        transform: 'scale(1.8)'
+                        right: '12px',
+                        top: '12px',
+                        opacity: 0.08,
+                        transform: 'scale(1.5)',
+                        zIndex: 0
                     }}>
                         <Icon name="FileText" size={32} />
                     </div>
@@ -212,15 +213,16 @@ const Logs = () => {
                         <div className="stat-label">信息</div>
                         <div className="stat-value">{stats.info}</div>
                     </div>
-                    <div className="stat-icon">
+                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
                         <Icon name="Info" />
                     </div>
                     <div style={{
                         position: 'absolute',
-                        right: '8px',
-                        bottom: '8px',
-                        opacity: 0.1,
-                        transform: 'scale(1.8)'
+                        right: '12px',
+                        top: '12px',
+                        opacity: 0.08,
+                        transform: 'scale(1.5)',
+                        zIndex: 0
                     }}>
                         <Icon name="Info" size={32} />
                     </div>
@@ -234,15 +236,16 @@ const Logs = () => {
                         <div className="stat-label">警告</div>
                         <div className="stat-value">{stats.warn}</div>
                     </div>
-                    <div className="stat-icon">
+                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
                         <Icon name="AlertTriangle" />
                     </div>
                     <div style={{
                         position: 'absolute',
-                        right: '8px',
-                        bottom: '8px',
-                        opacity: 0.1,
-                        transform: 'scale(1.8)'
+                        right: '12px',
+                        top: '12px',
+                        opacity: 0.08,
+                        transform: 'scale(1.5)',
+                        zIndex: 0
                     }}>
                         <Icon name="AlertTriangle" size={32} />
                     </div>
@@ -256,15 +259,16 @@ const Logs = () => {
                         <div className="stat-label">错误</div>
                         <div className="stat-value">{stats.error}</div>
                     </div>
-                    <div className="stat-icon">
+                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
                         <Icon name="AlertCircle" />
                     </div>
                     <div style={{
                         position: 'absolute',
-                        right: '8px',
-                        bottom: '8px',
-                        opacity: 0.1,
-                        transform: 'scale(1.8)'
+                        right: '12px',
+                        top: '12px',
+                        opacity: 0.08,
+                        transform: 'scale(1.5)',
+                        zIndex: 0
                     }}>
                         <Icon name="AlertCircle" size={32} />
                     </div>
@@ -278,52 +282,68 @@ const Logs = () => {
                         <div className="stat-label">请求</div>
                         <div className="stat-value">{stats.request}</div>
                     </div>
-                    <div className="stat-icon">
+                    <div className="stat-icon" style={{ position: 'relative', zIndex: 1 }}>
                         <Icon name="Globe" />
                     </div>
                     <div style={{
                         position: 'absolute',
-                        right: '8px',
-                        bottom: '8px',
-                        opacity: 0.1,
-                        transform: 'scale(1.8)'
+                        right: '12px',
+                        top: '12px',
+                        opacity: 0.08,
+                        transform: 'scale(1.5)',
+                        zIndex: 0
                     }}>
                         <Icon name="Globe" size={32} />
                     </div>
                 </Card>
             </div>
 
-            {/* Actions Bar - 改进的响应式布局 */}
+            {/* Actions Bar - 搜索框和按钮在同一行 */}
             <div style={{
                 display: 'flex',
-                flexDirection: 'column',
                 gap: '12px',
                 marginTop: '24px',
-                marginBottom: '24px'
+                marginBottom: '24px',
+                flexWrap: 'wrap',
+                alignItems: 'center'
             }}>
-                {/* 第一行：搜索框 */}
-                <div style={{ position: 'relative', flex: '1', maxWidth: '400px' }}>
-                    <Icon name="Search" size={16} style={{
+                {/* 搜索框 - 带内部图标 */}
+                <div style={{
+                    position: 'relative',
+                    flex: '1 1 auto',
+                    minWidth: '200px',
+                    maxWidth: '400px'
+                }}>
+                    <div style={{
                         position: 'absolute',
                         left: '12px',
                         top: '50%',
                         transform: 'translateY(-50%)',
                         color: 'var(--zinc-400)',
                         pointerEvents: 'none',
-                        zIndex: 1
-                    }} />
+                        zIndex: 10,
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}>
+                        <Icon name="Search" size={16} />
+                    </div>
                     <input
                         type="text"
                         className="form-input"
                         placeholder="搜索日志..."
                         value={searchKeyword}
                         onChange={(e) => setSearchKeyword(e.target.value)}
-                        style={{ paddingLeft: '40px', width: '100%' }}
+                        style={{
+                            paddingLeft: '40px',
+                            width: '100%',
+                            position: 'relative',
+                            zIndex: 1
+                        }}
                     />
                 </div>
 
-                {/* 第二行：操作按钮 */}
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                {/* 操作按钮组 */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                     <Button variant="secondary" onClick={() => { loadLogs(); loadLogStats(); }}>
                         <Icon name="RefreshCw" size={16} className={isLoading ? "loading" : ""} />
                     </Button>
@@ -338,6 +358,7 @@ const Logs = () => {
                     </Button>
                     <Button variant="secondary" onClick={handleExportLogs}>
                         <Icon name="Download" size={16} />
+                        <span className="btn-text-desktop">导出</span>
                     </Button>
                     <Button variant="danger" onClick={() => {
                         if (confirm('确定要清空所有日志吗？此操作不可恢复。')) {
@@ -345,6 +366,7 @@ const Logs = () => {
                         }
                     }}>
                         <Icon name="Trash2" size={16} />
+                        <span className="btn-text-desktop">清空</span>
                     </Button>
                 </div>
             </div>
