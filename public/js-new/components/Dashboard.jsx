@@ -9,6 +9,7 @@ const Dashboard = () => {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false });
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [hideSensitive, setHideSensitive] = useState(true);
+    const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'enabled' | 'disabled'
     const [passwordModal, setPasswordModal] = useState({ isOpen: false, type: '', onConfirm: null });
     const [importModal, setImportModal] = useState({ isOpen: false, data: null });
     const [importMethodModal, setImportMethodModal] = useState({ isOpen: false });
@@ -388,7 +389,11 @@ const Dashboard = () => {
         <div className="page-container animate-fade-in">
             {/* Stats */}
             <div className="stats-grid">
-                <Card className="stat-card">
+                <Card
+                    className={`stat-card ${filterStatus === 'all' ? 'active' : ''}`}
+                    onClick={() => setFilterStatus('all')}
+                    style={{ cursor: 'pointer' }}
+                >
                     <div className="stat-info">
                         <div className="stat-label">总 Token 数</div>
                         <div className="stat-value">{tokens.length}</div>
@@ -397,7 +402,11 @@ const Dashboard = () => {
                         <Icon name="LayoutGrid" />
                     </div>
                 </Card>
-                <Card className="stat-card success">
+                <Card
+                    className={`stat-card success ${filterStatus === 'enabled' ? 'active' : ''}`}
+                    onClick={() => setFilterStatus('enabled')}
+                    style={{ cursor: 'pointer' }}
+                >
                     <div className="stat-info">
                         <div className="stat-label">已启用</div>
                         <div className="stat-value">{tokens.filter(t => t.enable).length}</div>
@@ -406,7 +415,11 @@ const Dashboard = () => {
                         <Icon name="Check" />
                     </div>
                 </Card>
-                <Card className="stat-card">
+                <Card
+                    className={`stat-card danger ${filterStatus === 'disabled' ? 'active' : ''}`}
+                    onClick={() => setFilterStatus('disabled')}
+                    style={{ cursor: 'pointer' }}
+                >
                     <div className="stat-info">
                         <div className="stat-label">已禁用</div>
                         <div className="stat-value">{tokens.filter(t => !t.enable).length}</div>
@@ -440,63 +453,136 @@ const Dashboard = () => {
             </div>
 
             {/* Token Table */}
-            <Card>
-                <div style={{ overflowX: 'auto' }}>
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th style={{ minWidth: '160px' }}>账号信息 (Project ID)</th>
-                                <th style={{ minWidth: '140px' }}>Token 详情</th>
-                                <th className="text-center">状态</th>
-                                <th className="text-center">操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tokens.length === 0 ? (
-                                <tr>
-                                    <td colSpan="4" className="text-center" style={{ padding: '48px 24px' }}>
-                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
-                                        <div style={{ color: 'var(--zinc-400)' }}>暂无 Token，点击上方「添加」按钮添加</div>
-                                    </td>
-                                </tr>
-                            ) : tokens.map((token, idx) => (
-                                <tr key={idx}>
-                                    <td>
-                                        <div className={`font-semibold ${hideSensitive ? 'blur-text' : ''}`} style={{ color: 'var(--text-primary)' }}>
-                                            {token.projectId || 'N/A'}
+            {(() => {
+                // 筛选逻辑
+                const filteredTokens = tokens.filter(token => {
+                    if (filterStatus === 'enabled') return token.enable;
+                    if (filterStatus === 'disabled') return !token.enable;
+                    return true; // 'all'
+                });
+
+                return (
+                    <>
+                        {/* Desktop Table */}
+                        <div className="token-desktop-view">
+                            <Card>
+                                <div style={{ overflowX: 'auto' }}>
+                                    <table className="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ minWidth: '160px' }}>账号信息 (Project ID)</th>
+                                                <th style={{ minWidth: '140px' }}>Token 详情</th>
+                                                <th className="text-center">状态</th>
+                                                <th className="text-center">操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredTokens.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="4" className="text-center" style={{ padding: '48px 24px' }}>
+                                                        <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
+                                                        <div style={{ color: 'var(--zinc-400)' }}>
+                                                            {filterStatus === 'all' ? '暂无 Token，点击上方「添加」按钮添加' :
+                                                                filterStatus === 'enabled' ? '暂无已启用的 Token' :
+                                                                    '暂无已禁用的 Token'}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : filteredTokens.map((token, idx) => (
+                                                <tr key={idx}>
+                                                    <td>
+                                                        <div className={`font-semibold ${hideSensitive ? 'blur-text' : ''}`} style={{ color: 'var(--text-primary)' }}>
+                                                            {token.projectId || 'N/A'}
+                                                        </div>
+                                                        <div className={`${hideSensitive ? 'blur-text' : ''}`} style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
+                                                            {token.email || "N/A"}
+                                                        </div>
+                                                    </td>
+                                                    <td className="font-mono" style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
+                                                        <div className={hideSensitive ? 'blur-text' : ''}>Access: {token.access_token_suffix}</div>
+                                                        <div>Token ID: {token.id?.substring(0, 8) || 'N/A'}...</div>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <span className={`status-badge ${token.enable ? 'success' : 'disabled'}`}>
+                                                            <span className="status-dot"></span>
+                                                            {token.enable ? '启用' : '禁用'}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ minWidth: '200px' }}>
+                                                        <div className="table-actions">
+                                                            <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
+                                                            <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
+                                                            <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
+                                                                {token.enable ? "禁用" : "启用"}
+                                                            </Button>
+                                                            <Button variant="danger" size="sm" onClick={() => handleDelete(token.id)} title="删除">
+                                                                <Icon name="Trash2" size={14} />
+                                                            </Button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
+                        </div>
+
+                        {/* Mobile Cards */}
+                        <div className="token-mobile-view">
+                            {filteredTokens.length === 0 ? (
+                                <Card style={{ padding: '48px 24px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>📦</div>
+                                    <div style={{ color: 'var(--zinc-400)' }}>
+                                        {filterStatus === 'all' ? '暂无 Token，点击上方「添加」按钮添加' :
+                                            filterStatus === 'enabled' ? '暂无已启用的 Token' :
+                                                '暂无已禁用的 Token'}
+                                    </div>
+                                </Card>
+                            ) : filteredTokens.map((token, idx) => (
+                                <div key={idx} className="token-mobile-card">
+                                    <div className="token-card-header">
+                                        <div className="token-card-info">
+                                            <div className={`token-card-email ${hideSensitive ? 'blur-text' : ''}`}>
+                                                {token.email || 'N/A'}
+                                            </div>
+                                            <div className={`token-card-project ${hideSensitive ? 'blur-text' : ''}`}>
+                                                {token.projectId || 'N/A'}
+                                            </div>
                                         </div>
-                                        <div className={`${hideSensitive ? 'blur-text' : ''}`} style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
-                                            {token.email || "N/A"}
-                                        </div>
-                                    </td>
-                                    <td className="font-mono" style={{ fontSize: '12px', color: 'var(--zinc-500)' }}>
-                                        <div className={hideSensitive ? 'blur-text' : ''}>Access: {token.access_token_suffix}</div>
-                                        <div>Token ID: {token.id?.substring(0, 8) || 'N/A'}...</div>
-                                    </td>
-                                    <td className="text-center">
                                         <span className={`status-badge ${token.enable ? 'success' : 'disabled'}`}>
                                             <span className="status-dot"></span>
                                             {token.enable ? '启用' : '禁用'}
                                         </span>
-                                    </td>
-                                    <td style={{ minWidth: '200px' }}>
-                                        <div className="table-actions">
-                                            <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
-                                            <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
-                                            <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
-                                                {token.enable ? "禁用" : "启用"}
-                                            </Button>
-                                            <Button variant="danger" size="sm" onClick={() => handleDelete(token.id)} title="删除">
-                                                <Icon name="Trash2" size={14} />
-                                            </Button>
+                                    </div>
+                                    <div className="token-card-details">
+                                        <div className="token-card-row">
+                                            <span>Access Token:</span>
+                                            <span className={hideSensitive ? 'blur-text' : ''}>
+                                                {token.access_token_suffix}
+                                            </span>
                                         </div>
-                                    </td>
-                                </tr>
+                                        <div className="token-card-row">
+                                            <span>Token ID:</span>
+                                            <span>{token.id?.substring(0, 8) || 'N/A'}...</span>
+                                        </div>
+                                    </div>
+                                    <div className="token-card-actions">
+                                        <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
+                                        <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
+                                        <Button variant={token.enable ? "primary" : "secondary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
+                                            {token.enable ? "禁用" : "启用"}
+                                        </Button>
+                                        <Button variant="danger" size="sm" onClick={() => handleDelete(token.id)} title="删除">
+                                            <Icon name="Trash2" size={14} />
+                                        </Button>
+                                    </div>
+                                </div>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
-            </Card>
+                        </div>
+                    </>
+                );
+            })()}
 
             {/* Modals */}
             <AddTokenModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onAdd={loadTokens} />
