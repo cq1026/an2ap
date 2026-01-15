@@ -1,6 +1,79 @@
 // ==================== Dashboard (Token 管理) ====================
 const { useState, useEffect } = React;
 
+// 判断是否为随机生成的 projectId
+const isRandomProjectId = (projectId) => {
+    if (!projectId) return true;
+    // 随机格式：word-word-alphanumeric (如 useful-fuze-abc12)
+    const randomPattern = /^[a-z]+-[a-z]+-[a-z0-9]{5}$/;
+    return randomPattern.test(projectId);
+};
+
+// 获取单个 Token 的 Project ID
+// silent=true 时不显示 toast（用于批量获取）
+const fetchProjectIdForToken = async (tokenId, addToast, silent = false) => {
+    try {
+        const response = await fetch(`/admin/tokens/${encodeURIComponent(tokenId)}/fetch-project-id`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            if (!silent) addToast(`Project ID 获取成功: ${data.projectId}`, 'success');
+            return { success: true, projectId: data.projectId };
+        } else {
+            if (!silent) addToast(`获取失败: ${data.message || '未知错误'}`, 'error');
+            return { success: false };
+        }
+    } catch (error) {
+        if (!silent) addToast(`获取失败: ${error.message}`, 'error');
+        return { success: false };
+    }
+};
+
+// 批量获取所有启用 Token 的 Project ID
+const batchFetchProjectIds = async (tokens, addToast, setIsBatchFetching, loadTokens) => {
+    const enabledTokens = tokens.filter(t => t.enable);
+    if (enabledTokens.length === 0) {
+        addToast('没有启用的 Token', 'warning');
+        return;
+    }
+
+    setIsBatchFetching(true);
+    addToast(`正在批量获取 Project ID (0/${enabledTokens.length})...`, 'info');
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (let i = 0; i < enabledTokens.length; i++) {
+        const token = enabledTokens[i];
+
+        const result = await fetchProjectIdForToken(token.id, addToast, true); // silent=true
+        if (result.success) {
+            successCount++;
+        } else {
+            failCount++;
+        }
+
+        // 防止请求过快，每个请求间隔 500ms
+        if (i < enabledTokens.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+    }
+
+    setIsBatchFetching(false);
+    addToast(
+        `批量获取完成: 成功 ${successCount} 个，失败 ${failCount} 个`,
+        successCount > 0 ? 'success' : 'error'
+    );
+    loadTokens(); // 刷新列表
+};
+
 const Dashboard = () => {
     const [tokens, setTokens] = useState([]);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -8,6 +81,7 @@ const Dashboard = () => {
     const [detailModalToken, setDetailModalToken] = useState(null);
     const [confirmModal, setConfirmModal] = useState({ isOpen: false });
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [isBatchFetching, setIsBatchFetching] = useState(false);
     const [hideSensitive, setHideSensitive] = useState(true);
     const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'enabled' | 'disabled'
     const [passwordModal, setPasswordModal] = useState({ isOpen: false, type: '', onConfirm: null });
@@ -440,6 +514,14 @@ const Dashboard = () => {
                     <Button variant="secondary" onClick={handleRefresh} disabled={isRefreshing}>
                         <Icon name="RefreshCw" size={16} className={isRefreshing ? "loading" : ""} />
                     </Button>
+                    <Button
+                        variant="secondary"
+                        onClick={() => batchFetchProjectIds(tokens, addToast, setIsBatchFetching, loadTokens)}
+                        disabled={isBatchFetching}
+                        title="批量获取所有启用Token的Project ID"
+                    >
+                        <Icon name="Globe" size={16} />
+                    </Button>
                     <Button variant="secondary" onClick={handleExport} title="导出Token">
                         <Icon name="Download" size={16} />
                     </Button>
@@ -512,6 +594,19 @@ const Dashboard = () => {
                                                         <div className="table-actions">
                                                             <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
                                                             <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
+                                                            <Button
+                                                                variant="secondary"
+                                                                size="sm"
+                                                                onClick={async () => {
+                                                                    const result = await fetchProjectIdForToken(token.id, addToast);
+                                                                    if (result.success) {
+                                                                        loadTokens();
+                                                                    }
+                                                                }}
+                                                                title={!token.projectId || isRandomProjectId(token.projectId) ? "获取 Project ID" : "重新获取 Project ID"}
+                                                            >
+                                                                <Icon name="Search" size={14} />
+                                                            </Button>
                                                             <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
                                                                 {token.enable ? "禁用" : "启用"}
                                                             </Button>
@@ -570,6 +665,19 @@ const Dashboard = () => {
                                     <div className="token-card-actions">
                                         <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
                                         <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={async () => {
+                                                const result = await fetchProjectIdForToken(token.id, addToast);
+                                                if (result.success) {
+                                                    loadTokens();
+                                                }
+                                            }}
+                                            title={!token.projectId || isRandomProjectId(token.projectId) ? "获取 Project ID" : "重新获取 Project ID"}
+                                        >
+                                            <Icon name="Search" size={14} />
+                                        </Button>
                                         <Button variant={token.enable ? "primary" : "secondary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
                                             {token.enable ? "禁用" : "启用"}
                                         </Button>

@@ -1573,9 +1573,32 @@ svg.loading {
 
 #versionSwitcher button:hover {
   background: #f4f4f5;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(0);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
   border-color: #d4d4d8;
+}
+
+/* ==================== 移动端按钮换行优化 ==================== */
+/* 防止"凭证列表"标题旁的按钮在移动端溢出 */
+@media (max-width: 767px) {
+    /* 让按钮容器自动换行 */
+    .flex.justify-between.items-center.mb-6 {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+    
+    /* 标题独占一行 */
+    .flex.justify-between.items-center.mb-6 > h2 {
+        width: 100%;
+        margin-bottom: 8px;
+    }
+    
+    /* 按钮容器占满剩余宽度并换行 */
+    .flex.justify-between.items-center.mb-6 > .flex.gap-2 {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: flex-start;
+    }
 }
 
 .dark #versionSwitcher button {
