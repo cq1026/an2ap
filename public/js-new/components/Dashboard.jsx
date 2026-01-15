@@ -594,19 +594,6 @@ const Dashboard = () => {
                                                         <div className="table-actions">
                                                             <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
                                                             <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
-                                                            <Button
-                                                                variant="secondary"
-                                                                size="sm"
-                                                                onClick={async () => {
-                                                                    const result = await fetchProjectIdForToken(token.id, addToast);
-                                                                    if (result.success) {
-                                                                        loadTokens();
-                                                                    }
-                                                                }}
-                                                                title={!token.projectId || isRandomProjectId(token.projectId) ? "获取 Project ID" : "重新获取 Project ID"}
-                                                            >
-                                                                <Icon name="Search" size={14} />
-                                                            </Button>
                                                             <Button variant={token.enable ? "secondary" : "primary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
                                                                 {token.enable ? "禁用" : "启用"}
                                                             </Button>
@@ -665,19 +652,6 @@ const Dashboard = () => {
                                     <div className="token-card-actions">
                                         <Button variant="secondary" size="sm" onClick={() => setDetailModalToken(token)}>详情</Button>
                                         <Button variant="secondary" size="sm" onClick={() => setQuotaModalToken(token)}>额度</Button>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={async () => {
-                                                const result = await fetchProjectIdForToken(token.id, addToast);
-                                                if (result.success) {
-                                                    loadTokens();
-                                                }
-                                            }}
-                                            title={!token.projectId || isRandomProjectId(token.projectId) ? "获取 Project ID" : "重新获取 Project ID"}
-                                        >
-                                            <Icon name="Search" size={14} />
-                                        </Button>
                                         <Button variant={token.enable ? "primary" : "secondary"} size="sm" onClick={() => handleToggle(token.id, token.enable)}>
                                             {token.enable ? "禁用" : "启用"}
                                         </Button>
