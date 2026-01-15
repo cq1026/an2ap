@@ -2,7 +2,7 @@ import axios from 'axios';
 import crypto from 'crypto';
 import log from '../utils/logger.js';
 import config from '../config/config.js';
-import { generateProjectId } from '../utils/idGenerator.js';
+import { generateProjectId } from '../utils/idGenerator.js'; // TODO: 可移除，已不再使用
 import tokenManager from './token_manager.js';
 import { OAUTH_CONFIG, OAUTH_SCOPES } from '../constants/oauth.js';
 import { buildAxiosRequestConfig } from '../utils/httpClient.js';
@@ -39,7 +39,7 @@ class OAuthManager {
       redirect_uri: `http://localhost:${port}/oauth-callback`,
       grant_type: 'authorization_code'
     });
-    
+
     const response = await axios(buildAxiosRequestConfig({
       method: 'POST',
       url: OAUTH_CONFIG.TOKEN_URL,
@@ -47,7 +47,7 @@ class OAuthManager {
       data: postData.toString(),
       timeout: config.timeout
     }));
-    
+
     return response.data;
   }
 
@@ -75,36 +75,23 @@ class OAuthManager {
   }
 
   /**
-   * 资格校验：尝试获取projectId，失败则自动回退到随机projectId
+   * 资格校验：尝试获取projectId
    */
   async validateAndGetProjectId(accessToken) {
-    // 如果配置跳过API验证，直接返回随机projectId
-    if (config.skipProjectIdFetch) {
-      const projectId = generateProjectId();
-      log.info('已跳过API验证，使用随机生成的projectId: ' + projectId);
-      return { projectId, hasQuota: true };
-    }
-
-    // 尝试从API获取projectId
     try {
       log.info('正在验证账号资格...');
       const projectId = await tokenManager.fetchProjectId({ access_token: accessToken });
-      
-      if (projectId === undefined) {
-        // 无资格，自动回退到随机projectId
-        const randomProjectId = generateProjectId();
-        log.warn('该账号无资格使用，已自动退回无资格模式，使用随机projectId: ' + randomProjectId);
-        return { projectId: randomProjectId, hasQuota: false };
+
+      if (projectId === undefined || projectId === null) {
+        log.warn('该账号无法获取 projectId，可能无资格或需要稍后重试');
+        return { projectId: null, hasQuota: false };
       }
-      
+
       log.info('账号验证通过，projectId: ' + projectId);
       return { projectId, hasQuota: true };
     } catch (err) {
-      // 获取失败时也退回到随机projectId
-      const randomProjectId = generateProjectId();
-      log.warn('验证账号资格失败: ' + err.message + '，已自动退回无资格模式');
-      log.info('使用随机生成的projectId: ' + randomProjectId);
-      return { projectId: randomProjectId, hasQuota: false };
+      log.error('验证账号资格失败: ' + err.message);
+      return { projectId: null, hasQuota: false };
     }
   }
 
@@ -114,7 +101,7 @@ class OAuthManager {
   async authenticate(code, port) {
     // 1. 交换授权码获取Token
     const tokenData = await this.exchangeCodeForToken(code, port);
-    
+
     if (!tokenData.access_token) {
       throw new Error('Token交换失败：未获取到access_token');
     }

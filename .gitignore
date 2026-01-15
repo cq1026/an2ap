@@ -26,3 +26,6 @@ public/images
 
 # 编译输出
 dist/
+
+# 参考文件
+gcli2api/
