@@ -4,23 +4,34 @@ const { useState, useEffect, useRef } = React;
 const Logs = () => {
     const [logs, setLogs] = useState([]);
     const [total, setTotal] = useState(0);
-    const [stats, setStats] = useState({ total: 0, info: 0, warn: 0, error: 0, request: 0 });
+    const [stats, setStats] = useState({ total: 0, info: 0, warn: 0, error: 0, request: 0, debug: 0 });
     const [currentLevel, setCurrentLevel] = useState('all');
     const [searchKeyword, setSearchKeyword] = useState('');
     const [offset, setOffset] = useState(0);
     const [limit] = useState(50);
     const [autoRefresh, setAutoRefresh] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [ws, setWs] = useState(null);
+    const [wsConnected, setWsConnected] = useState(false);
     const { addToast } = useToast();
     const autoRefreshTimerRef = useRef(null);
+    const wsReconnectTimerRef = useRef(null);
 
     useEffect(() => {
-        loadLogs();
+        // 优先使用 WebSocket 实时推送
+        connectLogWebSocket();
+        // 加载统计（始终需要）
         loadLogStats();
         return () => {
+            // 清理定时器
             if (autoRefreshTimerRef.current) {
                 clearInterval(autoRefreshTimerRef.current);
             }
+            if (wsReconnectTimerRef.current) {
+                clearTimeout(wsReconnectTimerRef.current);
+            }
+            // 断开 WebSocket
+            disconnectLogWebSocket();
         };
     }, []);
 
@@ -85,7 +96,7 @@ const Logs = () => {
                 addToast('日志已清空', 'success');
                 setLogs([]);
                 setTotal(0);
-                setStats({ total: 0, info: 0, warn: 0, error: 0, request: 0 });
+                setStats({ total: 0, info: 0, warn: 0, error: 0, request: 0, debug: 0 });
             } else {
                 addToast(data.message || '清空日志失败', 'error');
             }
@@ -176,7 +187,8 @@ const Logs = () => {
             info: 'Info',
             warn: 'AlertTriangle',
             error: 'AlertCircle',
-            request: 'Globe'
+            request: 'Globe',
+            debug: 'Info'
         };
         return icons[level] || 'FileText';
     };
@@ -195,6 +207,120 @@ const Logs = () => {
         return { __html: message.replace(regex, '<mark class="text-highlight">$1</mark>') };
     };
 
+    // WebSocket 连接管理
+    const connectLogWebSocket = () => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            return; // 已连接
+        }
+
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/logs`;
+
+        try {
+            const websocket = new WebSocket(wsUrl);
+
+            websocket.onopen = () => {
+                setWsConnected(true);
+                console.log('WebSocket 日志连接已建立');
+            };
+
+            websocket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    handleWsMessage(data);
+                } catch (e) {
+                    console.error('解析 WebSocket 消息失败:', e);
+                }
+            };
+
+            websocket.onclose = () => {
+                setWsConnected(false);
+                console.log('WebSocket 日志连接已断开');
+                // 5秒后重连
+                if (!wsReconnectTimerRef.current) {
+                    wsReconnectTimerRef.current = setTimeout(() => {
+                        wsReconnectTimerRef.current = null;
+                        connectLogWebSocket();
+                    }, 5000);
+                }
+            };
+
+            websocket.onerror = (error) => {
+                console.error('WebSocket 错误:', error);
+                setWsConnected(false);
+                // 回退到 HTTP 加载
+                loadLogs();
+            };
+
+            setWs(websocket);
+        } catch (e) {
+            console.error('创建 WebSocket 失败:', e);
+            // 回退到 HTTP 加载
+            loadLogs();
+        }
+    };
+
+    const handleWsMessage = (data) => {
+        switch (data.type) {
+            case 'history':
+                // 接收历史日志
+                setLogs(data.logs.reverse());
+                setTotal(data.logs.length);
+                updateStatsFromLogs(data.logs);
+                break;
+            case 'log':
+                // 接收新日志（增量更新）
+                setLogs(prev => [data.log, ...prev]);
+                setTotal(prev => prev + 1);
+                updateSingleLogStats(data.log);
+                break;
+            case 'clear':
+                // 日志被清空
+                setLogs([]);
+                setTotal(0);
+                setStats({ total: 0, info: 0, warn: 0, error: 0, request: 0, debug: 0 });
+                break;
+        }
+    };
+
+    const updateStatsFromLogs = (logs) => {
+        const newStats = { total: 0, info: 0, warn: 0, error: 0, request: 0, debug: 0 };
+        logs.forEach(log => {
+            const isSeparator = log.message && /^[═─=\-*_~]+$/.test(log.message.trim());
+            if (!isSeparator) {
+                newStats.total++;
+                if (newStats[log.level] !== undefined) {
+                    newStats[log.level]++;
+                }
+            }
+        });
+        setStats(newStats);
+    };
+
+    const updateSingleLogStats = (log) => {
+        const isSeparator = log.message && /^[═─=\-*_~]+$/.test(log.message.trim());
+        if (!isSeparator) {
+            setStats(prev => ({
+                ...prev,
+                total: prev.total + 1,
+                [log.level]: (prev[log.level] || 0) + 1
+            }));
+        }
+    };
+
+    const disconnectLogWebSocket = () => {
+        if (wsReconnectTimerRef.current) {
+            clearTimeout(wsReconnectTimerRef.current);
+            wsReconnectTimerRef.current = null;
+        }
+
+        if (ws) {
+            ws.close();
+            setWs(null);
+        }
+        setWsConnected(false);
+    };
+
     return (
         <div className="page-container animate-fade-in">
             {/* Stats Grid */}
@@ -208,7 +334,7 @@ const Logs = () => {
                         <div className="logs-stat-value">{stats.total}</div>
                     </div>
                     <div className="logs-stat-icon-bg">
-                        <Icon name="FileText" />
+                        <Icon name="Layers" />
                     </div>
                 </div>
                 <div
@@ -220,7 +346,19 @@ const Logs = () => {
                         <div className="logs-stat-value">{stats.info}</div>
                     </div>
                     <div className="logs-stat-icon-bg">
-                        <Icon name="Info" />
+                        <Icon name="MessageCircle" />
+                    </div>
+                </div>
+                <div
+                    className={`logs-stat-card info ${currentLevel === 'debug' ? 'active' : ''}`}
+                    onClick={() => handleFilterLevel('debug')}
+                >
+                    <div className="logs-stat-content">
+                        <div className="logs-stat-label">调试</div>
+                        <div className="logs-stat-value">{stats.debug}</div>
+                    </div>
+                    <div className="logs-stat-icon-bg">
+                        <Icon name="Search" />
                     </div>
                 </div>
                 <div
@@ -292,14 +430,21 @@ const Logs = () => {
                         <Icon name="RefreshCw" size={16} className={isLoading ? "loading" : ""} />
                     </Button>
                     <Button
-                        variant={autoRefresh ? "dark" : "secondary"}
-                        onClick={toggleAutoRefresh}
-                        className={autoRefresh ? "btn-dark" : ""}
-                        style={{ whiteSpace: 'nowrap' }}
+                        variant={wsConnected ? "success" : "secondary"}
+                        disabled={true}
+                        style={{ whiteSpace: 'nowrap', cursor: 'default' }}
+                        title={wsConnected ? "WebSocket 实时推送中" : "WebSocket 已断开"}
                     >
-                        <Icon name={autoRefresh ? "Pause" : "RefreshCw"} size={16} />
-                        <span className="btn-text-desktop">{autoRefresh ? '停止刷新' : '自动刷新'}</span>
-                        <span className="btn-text-mobile">{autoRefresh ? '停止' : '自动'}</span>
+                        <span style={{
+                            display: 'inline-block',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            backgroundColor: wsConnected ? '#10b981' : '#ef4444',
+                            marginRight: '6px'
+                        }}></span>
+                        <span className="btn-text-desktop">{wsConnected ? '实时推送中' : '已断开'}</span>
+                        <span className="btn-text-mobile">{wsConnected ? '实时' : '断开'}</span>
                     </Button>
                     <Button variant="secondary" onClick={handleExportLogs}>
                         <Icon name="Download" size={16} />

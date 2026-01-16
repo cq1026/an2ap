@@ -561,7 +561,7 @@ router.post('/oauth/exchange', cookieAuthMiddleware, async (req, res) => {
 
   try {
     const account = await oauthManager.authenticate(code, port, mode);
-    
+
     if (mode === 'geminicli') {
       // Gemini CLI 模式
       res.json({ success: true, data: account, message: 'Gemini CLI Token添加成功' });

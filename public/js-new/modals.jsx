@@ -296,16 +296,38 @@ const QuotaModal = ({ isOpen, onClose, token }) => {
         return 'low';
     };
 
+    // 计算预估请求次数：每次请求消耗 0.6667% 的额度
+    const calculateEstimatedRequests = (remaining) => {
+        const percentage = remaining * 100;
+        return Math.floor(percentage / 0.6667);
+    };
+
     const renderGroup = (title, emoji, items) => {
         if (items.length === 0) return null;
+
+        // 计算该分组的最小剩余额度和总预估次数
+        const minRemaining = Math.min(...items.map(item => item.remaining));
+        const groupEstimated = calculateEstimatedRequests(minRemaining);
+
         return (
             <div className="quota-group">
                 <h4 className="quota-group-title">
                     <span>{emoji}</span> {title}
+                    {groupEstimated > 0 && (
+                        <span style={{
+                            marginLeft: '8px',
+                            fontSize: '12px',
+                            color: 'var(--success)',
+                            fontWeight: 'normal'
+                        }}>
+                            约{groupEstimated}次
+                        </span>
+                    )}
                 </h4>
                 <div className="quota-items">
                     {items.map(item => {
                         const pct = (item.remaining * 100).toFixed(1);
+                        const estimated = calculateEstimatedRequests(item.remaining);
                         return (
                             <div key={item.modelId} className="quota-item">
                                 <div className="quota-item-header">
@@ -320,7 +342,14 @@ const QuotaModal = ({ isOpen, onClose, token }) => {
                                 </div>
                                 <div className="quota-progress-footer">
                                     <span className="quota-progress-label">剩余</span>
-                                    <span className="quota-progress-value">{pct}%</span>
+                                    <span className="quota-progress-value">
+                                        {pct}%
+                                        {estimated > 0 && (
+                                            <span style={{ marginLeft: '6px', color: 'var(--success)', fontSize: '11px' }}>
+                                                · 约{estimated}次
+                                            </span>
+                                        )}
+                                    </span>
                                 </div>
                             </div>
                         );
