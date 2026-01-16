@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,7 +8,7 @@
 
     <!-- 版本切换：检查用户偏好并自动跳转 -->
     <script>
-        (function() {
+        (function () {
             var preferred = localStorage.getItem('uiVersion');
             if (!preferred || preferred === 'old') {
                 window.location.href = '/index.html';
@@ -30,6 +31,7 @@
     <!-- 样式 -->
     <link rel="stylesheet" href="style-new.css">
 </head>
+
 <body>
     <div id="root"></div>
 
@@ -48,6 +50,7 @@
     <!-- 页面组件 -->
     <script type="text/babel" src="js-new/components/Login.jsx"></script>
     <script type="text/babel" src="js-new/components/Dashboard.jsx"></script>
+    <script type="text/babel" src="js-new/components/GeminiCLI.jsx"></script>
     <script type="text/babel" src="js-new/components/Settings.jsx"></script>
     <script type="text/babel" src="js-new/components/Logs.jsx"></script>
 
@@ -64,4 +67,5 @@
         );
     </script>
 </body>
+
 </html>

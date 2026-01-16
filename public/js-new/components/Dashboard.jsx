@@ -529,7 +529,7 @@ const Dashboard = () => {
                         <Icon name="Upload" size={16} />
                     </Button>
                     <Button onClick={() => setIsAddModalOpen(true)}>
-                        <Icon name="Plus" size={16} style={{ marginRight: '8px' }} /> 添加
+                        添加
                     </Button>
                 </div>
             </div>
