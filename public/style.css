@@ -2384,6 +2384,11 @@ input:checked+.slider:before {
     background: rgba(16, 185, 129, 0.15);
 }
 
+.log-stat-item.debug.active {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.15);
+}
+
 .log-stat-item.warn.active {
     border-color: var(--warning);
     background: rgba(245, 158, 11, 0.15);
@@ -2408,6 +2413,10 @@ input:checked+.slider:before {
 
 .log-stat-item.info .log-stat-num {
     color: var(--success);
+}
+
+.log-stat-item.debug .log-stat-num {
+    color: #3b82f6;
 }
 
 .log-stat-item.warn .log-stat-num {
@@ -2624,6 +2633,11 @@ input:checked+.slider:before {
 .log-level-tag.info {
     background: rgba(16, 185, 129, 0.15);
     color: var(--success);
+}
+
+.log-level-tag.debug {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
 }
 
 .log-level-tag.warn {

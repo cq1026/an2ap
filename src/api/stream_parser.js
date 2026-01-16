@@ -143,7 +143,9 @@ function parseAndEmitStreamChunk(line, state, callback) {
       const hasTools = state.hasToolCalls || state.toolCalls.length > 0;
       const isImage = isImageModel(state.model);
       
-      if (state.sessionId && state.model && state.reasoningSignature) {
+      // 注意：GeminiCLI 不使用 sessionId，但签名缓存仍然应该工作
+      // sessionId 参数在 thoughtSignatureCache.js 中已不再用于缓存 key
+      if (state.model && state.reasoningSignature) {
         if (shouldCacheSignature({ hasTools, isImageModel: isImage })) {
           const content = state.reasoningContent || ' ';
           setSignature(state.sessionId, state.model, state.reasoningSignature, content, { hasTools, isImageModel: isImage });

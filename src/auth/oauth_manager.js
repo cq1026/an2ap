@@ -4,7 +4,8 @@ import log from '../utils/logger.js';
 import config from '../config/config.js';
 import { generateProjectId } from '../utils/idGenerator.js'; // TODO: 可移除，已不再使用
 import tokenManager from './token_manager.js';
-import { OAUTH_CONFIG, OAUTH_SCOPES } from '../constants/oauth.js';
+import geminicliTokenManager from './geminicli_token_manager.js';
+import { OAUTH_CONFIG, OAUTH_SCOPES, GEMINICLI_OAUTH_CONFIG, GEMINICLI_OAUTH_SCOPES } from '../constants/oauth.js';
 import { buildAxiosRequestConfig } from '../utils/httpClient.js';
 
 class OAuthManager {
@@ -14,35 +15,45 @@ class OAuthManager {
 
   /**
    * 生成授权URL
+   * @param {number} port - 回调端口
+   * @param {string} mode - 模式：'antigravity' 或 'geminicli'
    */
-  generateAuthUrl(port) {
+  generateAuthUrl(port, mode = 'antigravity') {
+    const oauthConfig = mode === 'geminicli' ? GEMINICLI_OAUTH_CONFIG : OAUTH_CONFIG;
+    const scopes = mode === 'geminicli' ? GEMINICLI_OAUTH_SCOPES : OAUTH_SCOPES;
+    
     const params = new URLSearchParams({
       access_type: 'offline',
-      client_id: OAUTH_CONFIG.CLIENT_ID,
+      client_id: oauthConfig.CLIENT_ID,
       prompt: 'consent',
       redirect_uri: `http://localhost:${port}/oauth-callback`,
       response_type: 'code',
-      scope: OAUTH_SCOPES.join(' '),
-      state: this.state
+      scope: scopes.join(' '),
+      state: `${this.state}_${mode}` // 在 state 中包含 mode 信息
     });
-    return `${OAUTH_CONFIG.AUTH_URL}?${params.toString()}`;
+    return `${oauthConfig.AUTH_URL}?${params.toString()}`;
   }
 
   /**
    * 交换授权码获取Token
+   * @param {string} code - 授权码
+   * @param {number} port - 回调端口
+   * @param {string} mode - 模式：'antigravity' 或 'geminicli'
    */
-  async exchangeCodeForToken(code, port) {
+  async exchangeCodeForToken(code, port, mode = 'antigravity') {
+    const oauthConfig = mode === 'geminicli' ? GEMINICLI_OAUTH_CONFIG : OAUTH_CONFIG;
+    
     const postData = new URLSearchParams({
       code,
-      client_id: OAUTH_CONFIG.CLIENT_ID,
-      client_secret: OAUTH_CONFIG.CLIENT_SECRET,
+      client_id: oauthConfig.CLIENT_ID,
+      client_secret: oauthConfig.CLIENT_SECRET,
       redirect_uri: `http://localhost:${port}/oauth-callback`,
       grant_type: 'authorization_code'
     });
 
     const response = await axios(buildAxiosRequestConfig({
       method: 'POST',
-      url: OAUTH_CONFIG.TOKEN_URL,
+      url: oauthConfig.TOKEN_URL,
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       data: postData.toString(),
       timeout: config.timeout
@@ -97,10 +108,13 @@ class OAuthManager {
 
   /**
    * 完整的OAuth认证流程：交换Token -> 获取邮箱 -> 资格校验
+   * @param {string} code - 授权码
+   * @param {number} port - 回调端口
+   * @param {string} mode - 模式：'antigravity' 或 'geminicli'
    */
-  async authenticate(code, port) {
+  async authenticate(code, port, mode = 'antigravity') {
     // 1. 交换授权码获取Token
-    const tokenData = await this.exchangeCodeForToken(code, port);
+    const tokenData = await this.exchangeCodeForToken(code, port, mode);
 
     if (!tokenData.access_token) {
       throw new Error('Token交换失败：未获取到access_token');
@@ -117,16 +131,28 @@ class OAuthManager {
     const email = await this.fetchUserEmail(account.access_token);
     if (email) {
       account.email = email;
-      log.info('获取到用户邮箱: ' + email);
+      log.info(`[${mode}] 获取到用户邮箱: ${email}`);
     }
 
-    // 3. 资格校验并获取projectId
-    const { projectId, hasQuota } = await this.validateAndGetProjectId(account.access_token);
-    account.projectId = projectId;
-    account.hasQuota = hasQuota;
+    // 3. 资格校验（仅 antigravity 模式需要 projectId）
+    if (mode === 'antigravity') {
+      const { projectId, hasQuota } = await this.validateAndGetProjectId(account.access_token);
+      account.projectId = projectId;
+      account.hasQuota = hasQuota;
+    }
+    
     account.enable = true;
 
     return account;
+  }
+
+  /**
+   * Gemini CLI 专用认证流程（简化版，不需要 projectId）
+   * @param {string} code - 授权码
+   * @param {number} port - 回调端口
+   */
+  async authenticateGeminiCli(code, port) {
+    return this.authenticate(code, port, 'GeminiCLI');
   }
 }
 

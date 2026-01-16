@@ -9,6 +9,9 @@ import { buildGeminiErrorPayload } from '../../utils/errors.js';
 import logger from '../../utils/logger.js';
 import config from '../../config/config.js';
 import tokenManager from '../../auth/token_manager.js';
+import { createGeminiResponse } from '../formatters/gemini.js';
+import { validateIncomingChatRequest } from '../validators/chat.js';
+import { getSafeRetries } from './common/retry.js';
 import {
   setStreamHeaders,
   createHeartbeat,
@@ -16,77 +19,6 @@ import {
   endStream,
   with429Retry
 } from '../stream.js';
-
-/**
- * 创建 Gemini 格式响应
- * @param {string|null} content - 文本内容
- * @param {string|null} reasoning - 思维链内容
- * @param {string|null} reasoningSignature - 思维链签名
- * @param {Array|null} toolCalls - 工具调用
- * @param {string|null} finishReason - 结束原因
- * @param {Object|null} usage - 使用量统计
- * @returns {Object}
- */
-export const createGeminiResponse = (content, reasoning, reasoningSignature, toolCalls, finishReason, usage) => {
-  const parts = [];
-  
-  if (reasoning) {
-    const thoughtPart = { text: reasoning, thought: true };
-    if (reasoningSignature && config.passSignatureToClient) {
-      thoughtPart.thoughtSignature = reasoningSignature;
-    }
-    parts.push(thoughtPart);
-  }
-  
-  if (content) {
-    const textPart = { text: content };
-    // 生图模型没有 thought part，但上游仍可能返回 thoughtSignature；透传时挂在文本 part 上
-    if (!reasoning && reasoningSignature && config.passSignatureToClient) {
-      textPart.thoughtSignature = reasoningSignature;
-    }
-    parts.push(textPart);
-  }
-  
-  if (toolCalls && toolCalls.length > 0) {
-    toolCalls.forEach(tc => {
-      try {
-        const functionCallPart = {
-          functionCall: {
-            name: tc.function.name,
-            args: JSON.parse(tc.function.arguments)
-          }
-        };
-        if (tc.thoughtSignature && config.passSignatureToClient) {
-          functionCallPart.thoughtSignature = tc.thoughtSignature;
-        }
-        parts.push(functionCallPart);
-      } catch (e) {
-        // 忽略解析错误
-      }
-    });
-  }
-
-  const response = {
-    candidates: [{
-      content: {
-        parts: parts,
-        role: "model"
-      },
-      finishReason: finishReason || "STOP",
-      index: 0
-    }]
-  };
-
-  if (usage) {
-    response.usageMetadata = {
-      promptTokenCount: usage.prompt_tokens,
-      candidatesTokenCount: usage.completion_tokens,
-      totalTokenCount: usage.total_tokens
-    };
-  }
-  
-  return response;
-};
 
 /**
  * 将 OpenAI 模型列表转换为 Gemini 格式
@@ -167,17 +99,22 @@ export const handleGeminiModelDetail = async (req, res) => {
  * @param {boolean} isStream - 是否流式响应
  */
 export const handleGeminiRequest = async (req, res, modelName, isStream) => {
-  const maxRetries = Number(config.retryTimes || 0);
-  const safeRetries = maxRetries > 0 ? Math.floor(maxRetries) : 0;
+  const safeRetries = getSafeRetries(config.retryTimes);
   
   try {
+    const body = req.body || {};
+    const validation = validateIncomingChatRequest('gemini', body);
+    if (!validation.ok) {
+      return res.status(validation.status).json(buildGeminiErrorPayload({ message: validation.message }, validation.status));
+    }
+
     const token = await tokenManager.getToken();
     if (!token) {
       throw new Error('没有可用的token，请运行 npm run login 获取token');
     }
 
     const isImageModel = modelName.includes('-image');
-    const requestBody = generateGeminiRequestBody(req.body, modelName, token);
+    const requestBody = generateGeminiRequestBody(body, modelName, token);
     
     if (isImageModel) {
       prepareImageRequest(requestBody);
@@ -195,7 +132,7 @@ export const handleGeminiRequest = async (req, res, modelName, isStream) => {
             safeRetries,
             'gemini.stream.image '
           );
-          const chunk = createGeminiResponse(content, null, reasoningSignature, null, 'STOP', usage);
+          const chunk = createGeminiResponse(content, null, reasoningSignature, null, 'STOP', usage, { passSignatureToClient: config.passSignatureToClient });
           writeStreamData(res, chunk);
           clearInterval(heartbeatTimer);
           endStream(res, false);
@@ -211,16 +148,16 @@ export const handleGeminiRequest = async (req, res, modelName, isStream) => {
               usageData = data.usage;
             } else if (data.type === 'reasoning') {
               // Gemini 思考内容
-              const chunk = createGeminiResponse(null, data.reasoning_content, data.thoughtSignature, null, null, null);
+              const chunk = createGeminiResponse(null, data.reasoning_content, data.thoughtSignature, null, null, null, { passSignatureToClient: config.passSignatureToClient });
               writeStreamData(res, chunk);
             } else if (data.type === 'tool_calls') {
               hasToolCall = true;
               // Gemini 工具调用
-              const chunk = createGeminiResponse(null, null, null, data.tool_calls, null, null);
+              const chunk = createGeminiResponse(null, null, null, data.tool_calls, null, null, { passSignatureToClient: config.passSignatureToClient });
               writeStreamData(res, chunk);
             } else {
               // 普通文本
-              const chunk = createGeminiResponse(data.content, null, null, null, null, null);
+              const chunk = createGeminiResponse(data.content, null, null, null, null, null, { passSignatureToClient: config.passSignatureToClient });
               writeStreamData(res, chunk);
             }
           }),
@@ -230,7 +167,7 @@ export const handleGeminiRequest = async (req, res, modelName, isStream) => {
 
         // 发送结束块和 usage
         const finishReason = hasToolCall ? "STOP" : "STOP"; // Gemini 工具调用也是 STOP
-        const finalChunk = createGeminiResponse(null, null, null, null, finishReason, usageData);
+        const finalChunk = createGeminiResponse(null, null, null, null, finishReason, usageData, { passSignatureToClient: config.passSignatureToClient });
         writeStreamData(res, finalChunk);
 
         clearInterval(heartbeatTimer);
@@ -277,7 +214,7 @@ export const handleGeminiRequest = async (req, res, modelName, isStream) => {
         );
         
         const finishReason = "STOP";
-        const response = createGeminiResponse(content, reasoningContent || null, reasoningSignature, toolCalls, finishReason, usageData);
+        const response = createGeminiResponse(content, reasoningContent || null, reasoningSignature, toolCalls, finishReason, usageData, { passSignatureToClient: config.passSignatureToClient });
         res.json(response);
       } catch (error) {
         logger.error('Gemini 假非流请求失败:', error.message);
@@ -297,7 +234,7 @@ export const handleGeminiRequest = async (req, res, modelName, isStream) => {
       );
 
       const finishReason = toolCalls.length > 0 ? "STOP" : "STOP";
-      const response = createGeminiResponse(content, reasoningContent, reasoningSignature, toolCalls, finishReason, usage);
+      const response = createGeminiResponse(content, reasoningContent, reasoningSignature, toolCalls, finishReason, usage, { passSignatureToClient: config.passSignatureToClient });
       res.json(response);
     }
   } catch (error) {

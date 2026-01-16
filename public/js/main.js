@@ -23,6 +23,8 @@ initFilterState(); // 恢复筛选状态
                 switchTab('settings', false);
             } else if (savedTab === 'logs') {
                 switchTab('logs', false);
+            } else if (savedTab === 'geminicli') {
+                switchTab('geminicli', false);
             } else {
                 // 默认显示 tokens 页面
                 switchTab('tokens', false);

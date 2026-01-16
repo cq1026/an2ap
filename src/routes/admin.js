@@ -1,6 +1,7 @@
 import express from 'express';
 import { generateToken, authMiddleware, verifyToken } from '../auth/jwt.js';
 import tokenManager from '../auth/token_manager.js';
+import geminicliTokenManager from '../auth/geminicli_token_manager.js';
 import quotaManager from '../auth/quota_manager.js';
 import oauthManager from '../auth/oauth_manager.js';
 import config, { getConfigJson, saveConfigJson } from '../config/config.js';
@@ -380,6 +381,108 @@ function smartParseToken(rawToken) {
   return token;
 }
 
+// ==================== Gemini CLI Token 导入解析辅助 ====================
+
+function extractGeminiCliImportList(data) {
+  // 兼容多种 gcli 导出结构：
+  // - { tokens: [...] }
+  // - { accounts: [...] }
+  // - { data: { tokens/accounts: [...] } }
+  // - 直接数组 [...]
+  // - 单个凭证对象 { token/refresh_token/project_id/expiry/... }
+  if (Array.isArray(data)) return data;
+  if (!data || typeof data !== 'object') return null;
+
+  const list = data.tokens || data.accounts || data.data?.tokens || data.data?.accounts;
+  if (Array.isArray(list)) return list;
+
+  const hasRefresh = !!(data.refresh_token || data.refreshToken);
+  const hasAccess = !!(data.access_token || data.accessToken || data.token);
+  if (hasRefresh || hasAccess) return [data];
+  return null;
+}
+
+function normalizeTruthyBoolean(value) {
+  return value === true || value === 'true' || value === 1;
+}
+
+function parseGeminiCliEnable(rawToken) {
+  // enable/enabled/disabled 兼容
+  let enable = findFieldByKeyword(rawToken, 'enable');
+  if (enable === undefined) enable = findFieldByKeyword(rawToken, 'enabled');
+  let disabled = findFieldByKeyword(rawToken, 'disable');
+  if (disabled === undefined) disabled = findFieldByKeyword(rawToken, 'disabled');
+  if (enable === undefined && disabled !== undefined) {
+    enable = !normalizeTruthyBoolean(disabled);
+  }
+  if (enable === undefined) enable = true;
+  return normalizeTruthyBoolean(enable);
+}
+
+function deriveExpiresInAndTimestamp({ expires_in, expiry, timestamp }) {
+  // expires_in / expiry 兼容：
+  // - 如果有 expires_in(秒) -> 直接用
+  // - 如果只有 expiry(ISO8601) -> 计算剩余秒数，并把 timestamp 设为当前时间
+  const nowMs = Date.now();
+
+  let finalExpiresIn = null;
+  if (expires_in !== undefined && expires_in !== null && String(expires_in).trim() !== '') {
+    const n = parseInt(expires_in, 10);
+    if (Number.isFinite(n) && n > 0) finalExpiresIn = n;
+  }
+
+  let finalTimestamp = undefined;
+  if (finalExpiresIn === null && typeof expiry === 'string' && expiry.trim()) {
+    const expiryMs = Date.parse(expiry);
+    if (Number.isFinite(expiryMs)) {
+      finalExpiresIn = Math.max(1, Math.floor((expiryMs - nowMs) / 1000));
+      // 用 expiry 推算时，让 timestamp 表示“当前拿到 token 的时间”
+      finalTimestamp = nowMs;
+    }
+  }
+
+  if (finalTimestamp === undefined) {
+    if (timestamp) {
+      finalTimestamp = typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime();
+    } else {
+      finalTimestamp = nowMs;
+    }
+  }
+
+  return {
+    expires_in: finalExpiresIn ?? 3599,
+    timestamp: finalTimestamp
+  };
+}
+
+function smartParseGeminiCliToken(rawToken) {
+  if (!rawToken || typeof rawToken !== 'object') return null;
+
+  const refresh_token = findFieldByKeyword(rawToken, 'refresh');
+  if (!refresh_token) return null;
+
+  const token = { refresh_token };
+
+  // gcli 常见字段：token（=access_token）
+  const access_token = findFieldByKeyword(rawToken, 'access') || rawToken.token;
+  const email = findFieldByKeyword(rawToken, 'email') || findFieldByKeyword(rawToken, 'mail');
+  const expires_in = findFieldByKeyword(rawToken, 'expires') || findFieldByKeyword(rawToken, 'expire');
+  const timestamp = findFieldByKeyword(rawToken, 'time') || findFieldByKeyword(rawToken, 'stamp') || findFieldByKeyword(rawToken, 'created');
+  const expiry = findFieldByKeyword(rawToken, 'expiry') || findFieldByKeyword(rawToken, 'expiresat');
+  const projectId = findFieldByKeyword(rawToken, 'project');
+
+  if (access_token) token.access_token = access_token;
+  if (email) token.email = email;
+  if (projectId) token.projectId = projectId;
+
+  const derived = deriveExpiresInAndTimestamp({ expires_in, expiry, timestamp });
+  token.expires_in = derived.expires_in;
+  token.timestamp = derived.timestamp;
+  token.enable = parseGeminiCliEnable(rawToken);
+
+  return token;
+}
+
 // 导入 Token（需要密码验证，支持智能字段映射）
 router.post('/tokens/import', cookieAuthMiddleware, async (req, res) => {
   const { password, data, mode = 'merge' } = req.body;
@@ -451,19 +554,26 @@ router.post('/tokens/import', cookieAuthMiddleware, async (req, res) => {
 });
 
 router.post('/oauth/exchange', cookieAuthMiddleware, async (req, res) => {
-  const { code, port } = req.body;
+  const { code, port, mode = 'antigravity' } = req.body;
   if (!code || !port) {
     return res.status(400).json({ success: false, message: 'code和port必填' });
   }
 
   try {
-    const account = await oauthManager.authenticate(code, port);
-    const message = account.hasQuota
-      ? 'Token添加成功'
-      : 'Token添加成功（该账号无资格，已自动使用随机ProjectId）';
-    res.json({ success: true, data: account, message, fallbackMode: !account.hasQuota });
+    const account = await oauthManager.authenticate(code, port, mode);
+    
+    if (mode === 'geminicli') {
+      // Gemini CLI 模式
+      res.json({ success: true, data: account, message: 'Gemini CLI Token添加成功' });
+    } else {
+      // Antigravity 模式
+      const message = account.hasQuota
+        ? 'Token添加成功'
+        : 'Token添加成功（该账号无资格，已自动使用随机ProjectId）';
+      res.json({ success: true, data: account, message, fallbackMode: !account.hasQuota });
+    }
   } catch (error) {
-    logger.error('认证失败:', error.message);
+    logger.error(`[${mode}] 认证失败:`, error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -489,8 +599,13 @@ router.put('/config', cookieAuthMiddleware, (req, res) => {
     // 安全检查：如果修改了官方系统提示词，必须验证密码
     if (envUpdates && envUpdates.OFFICIAL_SYSTEM_PROMPT !== undefined) {
       const currentEnv = parseEnvFile(envPath);
+      // 正规化换行符后再比较（避免 \r\n 和 \n 不一致导致误判）
+      const normalizeNewlines = (str) => (str || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+      const newValue = normalizeNewlines(envUpdates.OFFICIAL_SYSTEM_PROMPT);
+      const oldValue = normalizeNewlines(currentEnv.OFFICIAL_SYSTEM_PROMPT);
+
       // 只有当值真正改变时才检查
-      if (envUpdates.OFFICIAL_SYSTEM_PROMPT !== currentEnv.OFFICIAL_SYSTEM_PROMPT) {
+      if (newValue !== oldValue) {
         if (!password || !verifyPassword(password)) {
           logger.warn(`尝试修改官方系统提示词但密码验证失败 IP: ${getClientIP(req)}`);
           return res.status(403).json({
@@ -610,6 +725,211 @@ router.delete('/logs', cookieAuthMiddleware, (req, res) => {
 
 // ==================== Token 额度 API ====================
 
+// ==================== Gemini CLI Token 管理 API ====================
+
+// 获取 Gemini CLI Token 列表
+router.get('/geminicli/tokens', cookieAuthMiddleware, async (req, res) => {
+  try {
+    const tokens = await geminicliTokenManager.getTokenList();
+    res.json({ success: true, data: tokens });
+  } catch (error) {
+    logger.error('[GeminiCLI] 获取Token列表失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 添加 Gemini CLI Token
+router.post('/geminicli/tokens', cookieAuthMiddleware, async (req, res) => {
+  const { access_token, refresh_token, expires_in, timestamp, enable, email } = req.body;
+  if (!access_token || !refresh_token) {
+    return res.status(400).json({ success: false, message: 'access_token和refresh_token必填' });
+  }
+  const tokenData = { access_token, refresh_token, expires_in };
+  if (timestamp) tokenData.timestamp = timestamp;
+  if (enable !== undefined) tokenData.enable = enable;
+  if (email) tokenData.email = email;
+
+  try {
+    const result = await geminicliTokenManager.addToken(tokenData);
+    logger.info(`[GeminiCLI] 添加新Token: ${access_token.substring(0, 8)}...`);
+    res.json(result);
+  } catch (error) {
+    logger.error('[GeminiCLI] 添加Token失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 更新 Gemini CLI Token
+router.put('/geminicli/tokens/:tokenId', cookieAuthMiddleware, async (req, res) => {
+  const { tokenId } = req.params;
+  const updates = req.body;
+
+  // 不允许通过 API 更新敏感字段
+  delete updates.access_token;
+  delete updates.refresh_token;
+
+  try {
+    const result = await geminicliTokenManager.updateTokenById(tokenId, updates);
+    logger.info(`[GeminiCLI] 更新Token: ${tokenId}`);
+    res.json(result);
+  } catch (error) {
+    logger.error('[GeminiCLI] 更新Token失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 删除 Gemini CLI Token
+router.delete('/geminicli/tokens/:tokenId', cookieAuthMiddleware, async (req, res) => {
+  const { tokenId } = req.params;
+  try {
+    const result = await geminicliTokenManager.deleteTokenById(tokenId);
+    logger.info(`[GeminiCLI] 删除Token: ${tokenId}`);
+    res.json(result);
+  } catch (error) {
+    logger.error('[GeminiCLI] 删除Token失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 热重载 Gemini CLI Token
+router.post('/geminicli/tokens/reload', cookieAuthMiddleware, async (req, res) => {
+  try {
+    await geminicliTokenManager.reload();
+    logger.info('[GeminiCLI] 手动触发Token热重载');
+    res.json({ success: true, message: 'Gemini CLI Token已热重载' });
+  } catch (error) {
+    logger.error('[GeminiCLI] 热重载失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 刷新指定 Gemini CLI Token
+router.post('/geminicli/tokens/:tokenId/refresh', cookieAuthMiddleware, async (req, res) => {
+  const { tokenId } = req.params;
+  try {
+    const result = await geminicliTokenManager.refreshTokenById(tokenId);
+    logger.info(`[GeminiCLI] 手动刷新Token: ${tokenId}`);
+    res.json({ success: true, message: 'Token刷新成功', data: result });
+  } catch (error) {
+    logger.error('[GeminiCLI] 刷新Token失败:', error.message);
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// 手动获取指定 Gemini CLI Token 的 Project ID
+router.post('/geminicli/tokens/:tokenId/fetch-project-id', cookieAuthMiddleware, async (req, res) => {
+  const { tokenId } = req.params;
+  try {
+    const result = await geminicliTokenManager.fetchProjectIdForToken(tokenId);
+    logger.info(`[GeminiCLI] 手动获取ProjectId: ${tokenId} -> ${result.projectId}`);
+    res.json({ success: true, message: 'Project ID获取成功', projectId: result.projectId });
+  } catch (error) {
+    logger.error('[GeminiCLI] 获取ProjectId失败:', error.message);
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, message: error.message });
+  }
+});
+
+// 导出 Gemini CLI Token（需要密码验证）
+router.post('/geminicli/tokens/export', cookieAuthMiddleware, async (req, res) => {
+  const { password } = req.body;
+
+  if (!password || !verifyPassword(password)) {
+    return res.status(403).json({ success: false, message: '密码验证失败' });
+  }
+
+  try {
+    const allTokens = await geminicliTokenManager.store.readAll();
+
+    logger.info('[GeminiCLI] 导出所有Token数据');
+    const exportData = {
+      version: 1,
+      exportTime: new Date().toISOString(),
+      tokens: allTokens.map(token => ({
+        access_token: token.access_token,
+        refresh_token: token.refresh_token,
+        expires_in: token.expires_in,
+        timestamp: token.timestamp,
+        enable: token.enable,
+        email: token.email,
+        projectId: token.projectId
+      }))
+    };
+
+    res.json({ success: true, data: exportData });
+  } catch (error) {
+    logger.error('[GeminiCLI] 导出Token失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 导入 Gemini CLI Token（需要密码验证）
+router.post('/geminicli/tokens/import', cookieAuthMiddleware, async (req, res) => {
+  const { password, data, mode = 'merge' } = req.body;
+
+  if (!password || !verifyPassword(password)) {
+    return res.status(403).json({ success: false, message: '密码验证失败' });
+  }
+
+  const importList = extractGeminiCliImportList(data);
+
+  if (!Array.isArray(importList)) {
+    return res.status(400).json({ success: false, message: '无效的导入数据格式' });
+  }
+
+  try {
+    const importTokens = importList;
+    let addedCount = 0;
+    let skippedCount = 0;
+    let updatedCount = 0;
+
+    const parsedTokens = [];
+    for (const rawToken of importTokens) {
+      const parsed = smartParseGeminiCliToken(rawToken);
+      if (parsed) parsedTokens.push(parsed);
+      else skippedCount++;
+    }
+
+    if (mode === 'replace') {
+      await geminicliTokenManager.store.writeAll(parsedTokens);
+      addedCount = parsedTokens.length;
+    } else {
+      const existingTokens = await geminicliTokenManager.store.readAll();
+      const existingRefreshTokens = new Set(existingTokens.map(t => t.refresh_token));
+
+      for (const token of parsedTokens) {
+        if (existingRefreshTokens.has(token.refresh_token)) {
+          const index = existingTokens.findIndex(t => t.refresh_token === token.refresh_token);
+          if (index !== -1) {
+            existingTokens[index] = { ...existingTokens[index], ...token };
+            updatedCount++;
+          }
+        } else {
+          existingTokens.push(token);
+          addedCount++;
+        }
+      }
+
+      await geminicliTokenManager.store.writeAll(existingTokens);
+    }
+
+    await geminicliTokenManager.reload();
+
+    logger.info(`[GeminiCLI] 导入Token: 新增 ${addedCount}, 更新 ${updatedCount}, 跳过 ${skippedCount}`);
+    res.json({
+      success: true,
+      message: `导入完成：新增 ${addedCount} 个，更新 ${updatedCount} 个，跳过 ${skippedCount} 个`,
+      data: { added: addedCount, updated: updatedCount, skipped: skippedCount }
+    });
+  } catch (error) {
+    logger.error('[GeminiCLI] 导入Token失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== Token 额度 API ====================
+
 // 获取指定Token的模型额度（使用 tokenId）
 router.get('/tokens/:tokenId/quotas', cookieAuthMiddleware, async (req, res) => {
   try {
@@ -671,11 +991,15 @@ router.get('/tokens/:tokenId/quotas', cookieAuthMiddleware, async (req, res) => 
       };
     });
 
+    // 获取请求计数
+    const requestCounts = quotaData.requestCounts || {};
+
     res.json({
       success: true,
       data: {
         lastUpdated: quotaData.lastUpdated,
-        models: modelsWithBeijingTime
+        models: modelsWithBeijingTime,
+        requestCounts // 返回请求计数供前端计算预估
       }
     });
   } catch (error) {

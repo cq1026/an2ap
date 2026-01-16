@@ -10,6 +10,11 @@
     "strategy": "request_count",
     "requestCount": 50
   },
+  "log": {
+    "maxSizeMB": 10,
+    "maxFiles": 5,
+    "maxMemory": 500
+  },
   "api": {
     "use": "sandbox",
     "sandbox": {
@@ -41,7 +46,7 @@
     "retryTimes": 3,
     "forceIPv4": false,
     "skipProjectIdFetch": false,
-    "useNativeAxios": false,
+    "useNativeAxios": true,
     "useContextSystemPrompt": true,
     "officialPromptPosition": "before",
     "mergeSystemPrompt": false,
