@@ -244,6 +244,7 @@ const TokenDetailModal = ({ isOpen, onClose, token, onSave }) => {
 const QuotaModal = ({ isOpen, onClose, token }) => {
     const [loading, setLoading] = useState(false);
     const [quotas, setQuotas] = useState({});
+    const [requestCounts, setRequestCounts] = useState({});
     const { addToast } = useToast();
 
     useEffect(() => {
@@ -262,6 +263,7 @@ const QuotaModal = ({ isOpen, onClose, token }) => {
 
             if (data.success) {
                 setQuotas(data.data.models);
+                setRequestCounts(data.data.requestCounts || {});
                 if (forceRefresh) {
                     addToast('额度数据已刷新', 'success');
                 }
@@ -297,17 +299,20 @@ const QuotaModal = ({ isOpen, onClose, token }) => {
     };
 
     // 计算预估请求次数：每次请求消耗 0.6667% 的额度
-    const calculateEstimatedRequests = (remaining) => {
+    // 基于当前阈值计算总的可用次数，然后减去已记录的请求次数
+    const calculateEstimatedRequests = (remaining, usedCount = 0) => {
         const percentage = remaining * 100;
-        return Math.floor(percentage / 0.6667);
+        const totalFromThreshold = Math.floor(percentage / 0.6667);
+        return Math.max(0, totalFromThreshold - usedCount);
     };
 
-    const renderGroup = (title, emoji, items) => {
+    const renderGroup = (title, emoji, items, groupKey) => {
         if (items.length === 0) return null;
 
         // 计算该分组的最小剩余额度和总预估次数
         const minRemaining = Math.min(...items.map(item => item.remaining));
-        const groupEstimated = calculateEstimatedRequests(minRemaining);
+        const usedCount = requestCounts[groupKey] || 0;
+        const groupEstimated = calculateEstimatedRequests(minRemaining, usedCount);
 
         return (
             <div className="quota-group">
@@ -327,7 +332,7 @@ const QuotaModal = ({ isOpen, onClose, token }) => {
                 <div className="quota-items">
                     {items.map(item => {
                         const pct = (item.remaining * 100).toFixed(1);
-                        const estimated = calculateEstimatedRequests(item.remaining);
+                        const estimated = calculateEstimatedRequests(item.remaining, usedCount);
                         return (
                             <div key={item.modelId} className="quota-item">
                                 <div className="quota-item-header">
@@ -372,9 +377,9 @@ const QuotaModal = ({ isOpen, onClose, token }) => {
                 </button>
             </div>
 
-            {renderGroup('Claude 模型', '🤖', grouped.claude)}
-            {renderGroup('Gemini 模型', '💎', grouped.gemini)}
-            {renderGroup('其他模型', '🔧', grouped.other)}
+            {renderGroup('Claude 模型', '🤖', grouped.claude, 'claude')}
+            {renderGroup('Gemini 模型', '💎', grouped.gemini, 'gemini')}
+            {renderGroup('其他模型', '🔧', grouped.other, 'other')}
         </Modal>
     );
 };
