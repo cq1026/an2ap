@@ -12,6 +12,7 @@ import { reloadConfig } from '../utils/configReloader.js';
 import { deepMerge } from '../utils/deepMerge.js';
 import { getModelsWithQuotas } from '../api/client.js';
 import { getEnvPath } from '../utils/paths.js';
+import ipBlockManager from '../utils/ipBlockManager.js';
 import dotenv from 'dotenv';
 
 const envPath = getEnvPath();
@@ -924,6 +925,101 @@ router.post('/geminicli/tokens/import', cookieAuthMiddleware, async (req, res) =
     });
   } catch (error) {
     logger.error('[GeminiCLI] 导入Token失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// ==================== IP 封禁管理 API ====================
+
+// 获取封禁列表
+router.get('/blocked-ips', cookieAuthMiddleware, async (req, res) => {
+  try {
+    const list = await ipBlockManager.listBlocked();
+    res.json({ success: true, data: list });
+  } catch (error) {
+    logger.error('获取封禁列表失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 解除IP封禁
+router.post('/unblock-ip', cookieAuthMiddleware, async (req, res) => {
+  try {
+    const { ip } = req.body;
+    if (!ip) {
+      return res.status(400).json({ success: false, message: 'IP地址必填' });
+    }
+    const success = await ipBlockManager.unblock(ip);
+    if (success) {
+      res.json({ success: true, message: `IP ${ip} 已解除封禁` });
+    } else {
+      res.status(404).json({ success: false, message: 'IP不在封禁列表中' });
+    }
+  } catch (error) {
+    logger.error('解除封禁失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 获取安全配置
+router.get('/security-config', cookieAuthMiddleware, async (req, res) => {
+  try {
+    const config = ipBlockManager.getConfig();
+    res.json({ success: true, data: config });
+  } catch (error) {
+    logger.error('获取安全配置失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 更新安全配置
+router.put('/security-config', cookieAuthMiddleware, async (req, res) => {
+  try {
+    const { config: updates } = req.body;
+    const currentConfig = ipBlockManager.getConfig();
+    const mergedConfig = deepMerge(currentConfig, updates);
+    await ipBlockManager.updateConfig(mergedConfig);
+    res.json({ success: true, message: '安全配置已更新' });
+  } catch (error) {
+    logger.error('更新安全配置失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 添加白名单IP
+router.post('/whitelist-ip', cookieAuthMiddleware, async (req, res) => {
+  try {
+    const { ip } = req.body;
+    if (!ip) {
+      return res.status(400).json({ success: false, message: 'IP地址必填' });
+    }
+    const success = await ipBlockManager.addWhitelistIP(ip);
+    if (success) {
+      res.json({ success: true, message: `IP ${ip} 已添加到白名单` });
+    } else {
+      res.json({ success: false, message: 'IP已在白名单中' });
+    }
+  } catch (error) {
+    logger.error('添加白名单失败:', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 移除白名单IP
+router.delete('/whitelist-ip', cookieAuthMiddleware, async (req, res) => {
+  try {
+    const { ip } = req.body;
+    if (!ip) {
+      return res.status(400).json({ success: false, message: 'IP地址必填' });
+    }
+    const success = await ipBlockManager.removeWhitelistIP(ip);
+    if (success) {
+      res.json({ success: true, message: `IP ${ip} 已从白名单移除` });
+    } else {
+      res.status(404).json({ success: false, message: 'IP不在白名单中' });
+    }
+  } catch (error) {
+    logger.error('移除白名单失败:', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 });

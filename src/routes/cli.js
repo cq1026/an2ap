@@ -80,13 +80,13 @@ function getGeminiCliModels() {
 }
 
 /**
- * 返回模型列表的通用处理函数
+ * 返回模型列表（OpenAI 格式）
  */
-function handleModelsRequest(req, res) {
+function handleModelsRequestOpenAI(req, res) {
   try {
     const created = Math.floor(Date.now() / 1000);
     const models = getGeminiCliModels();
-    
+
     const modelList = {
       object: 'list',
       data: models.map(id => ({
@@ -96,7 +96,36 @@ function handleModelsRequest(req, res) {
         owned_by: 'google'
       }))
     };
-    
+
+    res.json(modelList);
+  } catch (error) {
+    logger.error('[GeminiCLI] 获取模型列表失败:', error.message);
+    res.status(500).json({ error: error.message });
+  }
+}
+
+/**
+ * 返回模型列表（Gemini 格式）
+ */
+function handleModelsRequestGemini(req, res) {
+  try {
+    const models = getGeminiCliModels();
+
+    const modelList = {
+      models: models.map(id => ({
+        name: `models/${id}`,
+        version: '001',
+        displayName: id,
+        description: 'GeminiCLI model',
+        inputTokenLimit: 1048576,
+        outputTokenLimit: 65536,
+        supportedGenerationMethods: ['generateContent', 'countTokens'],
+        temperature: 1.0,
+        topP: 0.95,
+        topK: 40
+      }))
+    };
+
     res.json(modelList);
   } catch (error) {
     logger.error('[GeminiCLI] 获取模型列表失败:', error.message);
@@ -108,13 +137,13 @@ function handleModelsRequest(req, res) {
  * GET /cli/v1/models
  * 获取可用模型列表（OpenAI 格式）
  */
-router.get('/v1/models', handleModelsRequest);
+router.get('/v1/models', handleModelsRequestOpenAI);
 
 /**
  * GET /cli/v1beta/models
  * 获取可用模型列表（Gemini 格式）
  */
-router.get('/v1beta/models', handleModelsRequest);
+router.get('/v1beta/models', handleModelsRequestGemini);
 
 /**
  * POST /cli/v1/chat/completions
@@ -127,20 +156,22 @@ router.post('/v1/chat/completions', (req, res) => handleGeminiCliRequest(req, re
 /**
  * POST /cli/v1beta/models/:model:generateContent
  * 处理 Gemini 格式的非流式请求
+ * 使用正则表达式以支持模型名称中包含 / 的情况（如 "假流式/gemini-2.5-pro"）
  */
-router.post('/v1beta/models/:model\\:generateContent', (req, res) => {
-  // 将模型名称添加到请求体
-  req.body.model = req.params.model;
+router.post(/^\/v1beta\/models\/(.+):generateContent$/, (req, res) => {
+  // 将模型名称添加到请求体（解码 URL 编码的字符）
+  req.body.model = decodeURIComponent(req.params[0]);
   handleGeminiCliRequest(req, res, 'gemini');
 });
 
 /**
  * POST /cli/v1beta/models/:model:streamGenerateContent
  * 处理 Gemini 格式的流式请求
+ * 使用正则表达式以支持模型名称中包含 / 的情况（如 "假流式/gemini-2.5-pro"）
  */
-router.post('/v1beta/models/:model\\:streamGenerateContent', (req, res) => {
-  // 将模型名称添加到请求体，并标记为流式
-  req.body.model = req.params.model;
+router.post(/^\/v1beta\/models\/(.+):streamGenerateContent$/, (req, res) => {
+  // 将模型名称添加到请求体，并标记为流式（解码 URL 编码的字符）
+  req.body.model = decodeURIComponent(req.params[0]);
   req.body._isStream = true; // 内部标记
   handleGeminiCliRequest(req, res, 'gemini');
 });

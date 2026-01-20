@@ -414,6 +414,7 @@
                                     <option value="section-server">🖥️ 服务器</option>
                                     <option value="section-model">🎛️ 模型参数</option>
                                     <option value="section-rotation">🔄 轮询与性能</option>
+                                    <option value="section-security">🛡️ 安全管理</option>
                                 </select>
                                 <div class="settings-nav-list">
                                     <button type="button" class="settings-nav-item" data-target="section-server"
@@ -422,6 +423,8 @@
                                         onclick="setActiveSettingSection('section-model', true)">🎛️ 模型参数</button>
                                     <button type="button" class="settings-nav-item" data-target="section-rotation"
                                         onclick="setActiveSettingSection('section-rotation', true)">🔄 轮询与性能</button>
+                                    <button type="button" class="settings-nav-item" data-target="section-security"
+                                        onclick="setActiveSettingSection('section-security', true)">🛡️ 安全管理</button>
                                 </div>
                             </aside>
                             <div class="settings-content">
@@ -688,6 +691,42 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- 安全管理 -->
+                                    <div class="config-section" id="section-security">
+                                        <h4>🛡️ 安全管理</h4>
+                                        <div class="form-group compact switch-group">
+                                            <label>启用封禁 <span class="help-tip"
+                                                    data-tooltip="开启后自动封禁频繁违规的IP地址">?</span></label>
+                                            <label class="switch">
+                                                <input type="checkbox" id="blockingEnabled">
+                                                <span class="slider"></span>
+                                            </label>
+                                        </div>
+                                        <div class="security-info">
+                                            <p>IP封禁机制：自动识别并封禁频繁违规的IP地址</p>
+                                            <ul>
+                                                <li>5分钟内50次违规 → 临时封禁1小时</li>
+                                                <li>累计10次临时封禁 → 永久封禁</li>
+                                                <li>内网IP自动白名单（127.x、10.x、172.16-31.x、192.168.x）</li>
+                                            </ul>
+                                        </div>
+                                        <div class="blocked-ips-header">
+                                            <h5>封禁列表</h5>
+                                            <button type="button" onclick="loadBlockedIPs()" class="btn btn-sm btn-info">🔄 刷新</button>
+                                        </div>
+                                        <div id="blockedIPsList" class="blocked-ips-list">
+                                            <div class="empty-state-small">加载中...</div>
+                                        </div>
+                                        <div class="whitelist-section">
+                                            <h5>白名单管理</h5>
+                                            <div class="whitelist-input-group">
+                                                <input type="text" id="whitelistIPInput" placeholder="输入IP地址" />
+                                                <button type="button" onclick="addWhitelistIP()" class="btn btn-sm btn-success">➕ 添加</button>
+                                            </div>
+                                            <div id="whitelistIPsList" class="whitelist-ips-list"></div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="config-actions">
                                     <button type="button" onclick="loadConfig()" class="btn btn-secondary">🔄
@@ -710,6 +749,7 @@
     <script src="js/tokens.js" defer></script>
     <script src="js/geminicli.js" defer></script>
     <script src="js/config.js" defer></script>
+    <script src="js/security.js" defer></script>
     <script src="js/logs.js" defer></script>
     <script src="js/main.js" defer></script>
 

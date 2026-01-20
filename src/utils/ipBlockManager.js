@@ -4,39 +4,109 @@ import { getDataDir } from './paths.js';
 import logger from './logger.js';
 
 const BLOCKLIST_FILE = 'ip-blocklist.json';
-const TEMP_BLOCK_DURATION = 60 * 60 * 1000; // 1小时
-const MAX_VIOLATIONS_BEFORE_TEMP_BLOCK = 20; // 20次违规触发临时封禁 (稍微放宽一点，避免誤伤)
-const MAX_TEMP_BLOCKS_BEFORE_PERMANENT = 3; // 3次临时封禁触发永久封禁
-const VIOLATION_WINDOW = 60 * 1000; // 1分钟内的违规计数窗口
+const SECURITY_CONFIG_FILE = 'security.json';
+const SECURITY_CONFIG_EXAMPLE = 'security.json.example';
 
-// 本地白名单 IP
-const WHITELISTED_IPS = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1', 'localhost']);
+const DEFAULT_CONFIG = {
+  whitelist: {
+    enabled: true,
+    ips: ['127.0.0.1', '::1']
+  },
+  blocking: {
+    enabled: true,
+    tempBlockDuration: 60 * 60 * 1000,
+    maxViolationsBeforeTempBlock: 50,
+    maxTempBlocksBeforePermanent: 10,
+    violationWindow: 5 * 60 * 1000,
+    violationDecayTime: 30 * 60 * 1000
+  }
+};
+
+const PRIVATE_IP_RANGES = [
+  /^127\./,
+  /^10\./,
+  /^172\.(1[6-9]|2[0-9]|3[01])\./,
+  /^192\.168\./,
+  /^::1$/,
+  /^fe80:/,
+  /^fc00:/,
+  /^::ffff:127\./,
+  /^::ffff:10\./,
+  /^::ffff:192\.168\./
+];
 
 class IpBlockManager {
   constructor() {
     this.filePath = null;
-    this.data = {
-      blocked_ips: {}
-    };
+    this.configPath = null;
+    this.data = { blocked_ips: {} };
+    this.config = DEFAULT_CONFIG;
     this.initialized = false;
     this.savePromise = Promise.resolve();
   }
 
-  isWhitelisted(ip) {
-    if (!ip) return false;
-    return WHITELISTED_IPS.has(ip) || ip.startsWith('127.');
-  }
-
   async init() {
     if (this.initialized) return;
-    this.filePath = path.join(getDataDir(), BLOCKLIST_FILE);
+    const dataDir = getDataDir();
+    this.filePath = path.join(dataDir, BLOCKLIST_FILE);
+    this.configPath = path.join(process.cwd(), SECURITY_CONFIG_FILE);
+    
+    await this.loadConfig();
     await this.load();
     this.initialized = true;
   }
 
+  async loadConfig() {
+    try {
+      const examplePath = path.join(process.cwd(), SECURITY_CONFIG_EXAMPLE);
+      
+      try {
+        await fs.access(this.configPath);
+      } catch {
+        try {
+          await fs.copyFile(examplePath, this.configPath);
+          logger.info('已从 security.json.example 创建 security.json');
+        } catch (e) {
+          logger.warn('未找到 security.json.example，使用默认配置');
+        }
+      }
+      
+      try {
+        const content = await fs.readFile(this.configPath, 'utf8');
+        const loaded = JSON.parse(content);
+        this.config = { ...DEFAULT_CONFIG, ...loaded };
+        if (loaded.whitelist) this.config.whitelist = { ...DEFAULT_CONFIG.whitelist, ...loaded.whitelist };
+        if (loaded.blocking) this.config.blocking = { ...DEFAULT_CONFIG.blocking, ...loaded.blocking };
+      } catch (e) {
+        if (e.code !== 'ENOENT') {
+          logger.error('加载安全配置失败:', e.message);
+        }
+        this.config = DEFAULT_CONFIG;
+      }
+    } catch (e) {
+      logger.error('初始化安全配置失败:', e.message);
+      this.config = DEFAULT_CONFIG;
+    }
+  }
+
+  async saveConfig() {
+    try {
+      await fs.writeFile(this.configPath, JSON.stringify(this.config, null, 2), 'utf8');
+      logger.info('安全配置已保存');
+    } catch (e) {
+      logger.error('保存安全配置失败:', e.message);
+    }
+  }
+
+  isWhitelisted(ip) {
+    if (!ip) return false;
+    if (!this.config.whitelist.enabled) return false;
+    if (this.config.whitelist.ips.includes(ip)) return true;
+    return PRIVATE_IP_RANGES.some(regex => regex.test(ip));
+  }
+
   async load() {
     try {
-      // 确保目录存在
       await fs.mkdir(path.dirname(this.filePath), { recursive: true });
       
       try {
@@ -46,7 +116,6 @@ class IpBlockManager {
         if (e.code !== 'ENOENT') {
           logger.error('加载封禁列表失败:', e.message);
         }
-        // 文件不存在则使用默认值
         this.data = { blocked_ips: {} };
       }
     } catch (e) {
@@ -55,7 +124,6 @@ class IpBlockManager {
   }
 
   async save() {
-    // 串行写入防止冲突
     this.savePromise = this.savePromise.then(async () => {
       try {
         await fs.writeFile(this.filePath, JSON.stringify(this.data, null, 2), 'utf8');
@@ -68,6 +136,7 @@ class IpBlockManager {
 
   check(ip) {
     if (!ip || this.isWhitelisted(ip)) return { blocked: false };
+    if (!this.config.blocking.enabled) return { blocked: false };
     
     const info = this.data.blocked_ips[ip];
     if (!info) return { blocked: false };
@@ -85,8 +154,8 @@ class IpBlockManager {
 
   async recordViolation(ip, type) {
     if (!ip || this.isWhitelisted(ip)) return;
+    if (!this.config.blocking.enabled) return;
     
-    // 确保已初始化
     if (!this.initialized) await this.init();
 
     let info = this.data.blocked_ips[ip];
@@ -103,33 +172,91 @@ class IpBlockManager {
       this.data.blocked_ips[ip] = info;
     }
 
-    // 如果已经在封禁中，不记录
     if (info.permanent || (info.expiresAt && now < info.expiresAt)) return;
 
-    // 检查违规窗口：如果距离上次违规超过窗口期，重置计数
-    if (now - info.lastViolation > VIOLATION_WINDOW) {
+    const { violationDecayTime, violationWindow, maxViolationsBeforeTempBlock, maxTempBlocksBeforePermanent, tempBlockDuration } = this.config.blocking;
+
+    if (now - info.lastViolation > violationDecayTime) {
+      info.violations = Math.max(0, Math.floor(info.violations / 2));
+    } else if (now - info.lastViolation > violationWindow) {
       info.violations = 0;
     }
 
     info.violations++;
     info.lastViolation = now;
 
-    if (info.violations >= MAX_VIOLATIONS_BEFORE_TEMP_BLOCK) {
-      // 触发封禁
+    if (info.violations >= maxViolationsBeforeTempBlock) {
       info.tempBlockCount++;
-      info.violations = 0; // 重置违规计数
+      info.violations = 0;
 
-      if (info.tempBlockCount >= MAX_TEMP_BLOCKS_BEFORE_PERMANENT) {
+      if (info.tempBlockCount >= maxTempBlocksBeforePermanent) {
         info.permanent = true;
         info.expiresAt = 0;
         logger.warn(`IP ${ip} 因频繁违规(${type})被永久封禁`);
       } else {
-        info.expiresAt = now + TEMP_BLOCK_DURATION;
-        logger.warn(`IP ${ip} 因频繁违规(${type})被临时封禁 1 小时 (累计封禁 ${info.tempBlockCount} 次)`);
+        info.expiresAt = now + tempBlockDuration;
+        logger.warn(`IP ${ip} 因频繁违规(${type})被临时封禁 ${Math.round(tempBlockDuration/60000)} 分钟 (累计封禁 ${info.tempBlockCount} 次)`);
       }
       
       await this.save();
     }
+  }
+
+  async unblock(ip) {
+    if (!ip) return false;
+    if (this.data.blocked_ips[ip]) {
+      delete this.data.blocked_ips[ip];
+      await this.save();
+      logger.info(`IP ${ip} 已解除封禁`);
+      return true;
+    }
+    return false;
+  }
+
+  async listBlocked() {
+    const now = Date.now();
+    return Object.entries(this.data.blocked_ips)
+      .filter(([_, info]) => {
+        return info.permanent || (info.expiresAt && now < info.expiresAt);
+      })
+      .map(([ip, info]) => ({
+        ip,
+        permanent: info.permanent,
+        expiresAt: info.expiresAt,
+        tempBlockCount: info.tempBlockCount
+      }));
+  }
+
+  getConfig() {
+    return this.config;
+  }
+
+  async updateConfig(newConfig) {
+    this.config = { ...this.config, ...newConfig };
+    if (newConfig.whitelist) this.config.whitelist = { ...this.config.whitelist, ...newConfig.whitelist };
+    if (newConfig.blocking) this.config.blocking = { ...this.config.blocking, ...newConfig.blocking };
+    await this.saveConfig();
+  }
+
+  async addWhitelistIP(ip) {
+    if (!this.config.whitelist.ips.includes(ip)) {
+      this.config.whitelist.ips.push(ip);
+      await this.saveConfig();
+      logger.info(`IP ${ip} 已添加到白名单`);
+      return true;
+    }
+    return false;
+  }
+
+  async removeWhitelistIP(ip) {
+    const index = this.config.whitelist.ips.indexOf(ip);
+    if (index > -1) {
+      this.config.whitelist.ips.splice(index, 1);
+      await this.saveConfig();
+      logger.info(`IP ${ip} 已从白名单移除`);
+      return true;
+    }
+    return false;
   }
 }
 
