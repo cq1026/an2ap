@@ -3,6 +3,7 @@ import path from 'path';
 import { log } from '../utils/logger.js';
 import { getDataDir } from '../utils/paths.js';
 import { QUOTA_CACHE_TTL, QUOTA_CLEANUP_INTERVAL } from '../constants/index.js';
+import { getGroupKey } from '../utils/modelGroups.js';
 
 // 每次请求消耗的额度百分比
 const REQUEST_COST_PERCENT = 0.6667;
@@ -90,7 +91,7 @@ class QuotaManager {
 
     // 计算新数据中每个组的最低额度
     Object.entries(quotas || {}).forEach(([modelId, quotaData]) => {
-      const groupKey = this._getGroupKey(modelId);
+      const groupKey = getGroupKey(modelId);
       const remaining = quotaData.r || 0;
 
       if (groupMinRemaining[groupKey] === undefined || remaining < groupMinRemaining[groupKey]) {
@@ -123,7 +124,7 @@ class QuotaManager {
 
     // 计算旧数据中每个组的最低额度
     Object.entries(existingModels).forEach(([modelId, quotaData]) => {
-      const groupKey = this._getGroupKey(modelId);
+      const groupKey = getGroupKey(modelId);
       const remaining = quotaData.r || 0;
 
       if (existingGroupMinRemaining[groupKey] === undefined || remaining < existingGroupMinRemaining[groupKey]) {
@@ -158,19 +159,6 @@ class QuotaManager {
   }
 
   /**
-   * 获取模型所属的组 key
-   * @param {string} modelId - 模型 ID
-   * @returns {string} 组 key
-   */
-  _getGroupKey(modelId) {
-    const lower = modelId.toLowerCase();
-    if (lower.includes('claude')) return 'claude';
-    if (lower.includes('gemini-3-pro-image')) return 'banana';
-    if (lower.includes('gemini') || lower.includes('publishers/google/')) return 'gemini';
-    return 'other';
-  }
-
-  /**
    * 记录一次请求
    * @param {string} refreshToken - Token ID
    * @param {string} modelId - 使用的模型 ID
@@ -189,7 +177,7 @@ class QuotaManager {
       this.cache.set(refreshToken, data);
     }
 
-    const groupKey = this._getGroupKey(modelId);
+    const groupKey = getGroupKey(modelId);
     if (!data.requestCounts) data.requestCounts = {};
 
     // 检查是否已过重置时间
@@ -246,11 +234,11 @@ class QuotaManager {
       return true;
     }
 
-    const groupKey = this._getGroupKey(modelId);
+    const groupKey = getGroupKey(modelId);
 
     // 查找该组中任意模型的额度
     for (const [id, quotaData] of Object.entries(data.models)) {
-      const idGroupKey = this._getGroupKey(id);
+      const idGroupKey = getGroupKey(id);
       if (idGroupKey === groupKey) {
         const remaining = quotaData.r || 0;
         // 如果额度为 0，返回 false
@@ -276,12 +264,12 @@ class QuotaManager {
       return 1; // 没有数据，假设满额
     }
 
-    const groupKey = this._getGroupKey(modelId);
+    const groupKey = getGroupKey(modelId);
     let minRemaining = 1;
     let found = false;
 
     for (const [id, quotaData] of Object.entries(data.models)) {
-      const idGroupKey = this._getGroupKey(id);
+      const idGroupKey = getGroupKey(id);
       if (idGroupKey === groupKey) {
         found = true;
         const remaining = quotaData.r || 0;
@@ -292,6 +280,51 @@ class QuotaManager {
     }
 
     return found ? minRemaining : 1;
+  }
+
+  /**
+   * 获取模型系列的最早恢复时间
+   * @param {string} tokenId - Token ID
+   * @param {string} modelId - 模型 ID
+   * @returns {{resetTime: number|null, hasData: boolean}} resetTime 为时间戳（毫秒），hasData 表示是否有该系列的数据
+   */
+  getModelGroupResetTime(tokenId, modelId) {
+    const data = this.cache.get(tokenId);
+    if (!data || !data.models) {
+      return { resetTime: null, hasData: false };
+    }
+
+    const groupKey = getGroupKey(modelId);
+    let earliestReset = null;
+    let found = false;
+
+    for (const [id, quotaData] of Object.entries(data.models)) {
+      const idGroupKey = getGroupKey(id);
+      if (idGroupKey === groupKey) {
+        found = true;
+        const resetTimeRaw = quotaData.t;
+        if (resetTimeRaw) {
+          const resetMs = Date.parse(resetTimeRaw);
+          if (Number.isFinite(resetMs)) {
+            if (earliestReset === null || resetMs < earliestReset) {
+              earliestReset = resetMs;
+            }
+          }
+        }
+      }
+    }
+
+    return { resetTime: earliestReset, hasData: found };
+  }
+
+  /**
+   * 检查是否有指定 token 的额度数据
+   * @param {string} tokenId - Token ID
+   * @returns {boolean} 是否有数据
+   */
+  hasQuotaData(tokenId) {
+    const data = this.cache.get(tokenId);
+    return !!(data && data.models && Object.keys(data.models).length > 0);
   }
 
   /**
