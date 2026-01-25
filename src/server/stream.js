@@ -1,6 +1,6 @@
 /**
  * SSE 流式响应和心跳机制工具模块
- * 提供统一的流式响应处理、心跳保活、429重试等功能
+ * 提供统一的流式响应处理、心跳保活、429/503重试等功能
  */
 
 import config from '../config/config.js';
@@ -9,6 +9,7 @@ import memoryManager, { registerMemoryPoolCleanup } from '../utils/memoryManager
 import { DEFAULT_HEARTBEAT_INTERVAL, LONG_COOLDOWN_THRESHOLD } from '../constants/index.js';
 import tokenCooldownManager from '../auth/token_cooldown_manager.js';
 import quotaManager from '../auth/quota_manager.js';
+import { getGroupKey } from '../utils/modelGroups.js';
 
 // ==================== 心跳机制（防止 CF 超时） ====================
 const HEARTBEAT_INTERVAL = config.server.heartbeatInterval || DEFAULT_HEARTBEAT_INTERVAL;
@@ -122,7 +123,7 @@ export const endStream = (res, isWriteDone = true) => {
   res.end();
 };
 
-// ==================== 通用重试工具（处理 429） ====================
+// ==================== 通用重试工具（处理 429/503） ====================
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -269,7 +270,35 @@ function getUpstreamResetTimestamp(error) {
 }
 
 /**
- * 带 429 重试的执行器
+ * 判断错误是否为可重试的临时性错误（429 或 503 容量不足）
+ * @param {number} status - HTTP 状态码
+ * @param {Error} error - 错误对象
+ * @returns {boolean}
+ */
+function isRetryableError(status, error) {
+  // 429 Rate Limit 总是可重试
+  if (status === 429) return true;
+
+  // 503 需要检查是否为容量不足错误
+  if (status === 503) {
+    const body = extractUpstreamErrorBody(error);
+    const root = (body && typeof body === 'object') ? body : null;
+    const inner = root?.error || root;
+    const details = Array.isArray(inner?.details) ? inner.details : [];
+    
+    // 检查是否包含 MODEL_CAPACITY_EXHAUSTED
+    for (const d of details) {
+      if (d?.reason === 'MODEL_CAPACITY_EXHAUSTED') {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * 带 429/503 重试的执行器
  * @param {Function} fn - 要执行的异步函数，接收 attempt 参数
  * @param {number} maxRetries - 最大重试次数
  * @param {Object} options - 可选参数
@@ -316,12 +345,13 @@ export async function with429Retry(fn, maxRetries, options = {}, legacyOnAttempt
       // 兼容多种错误格式：error.status, error.statusCode, error.response?.status
       const status = Number(error.status || error.statusCode || error.response?.status);
 
-      if (status === 429) {
+      if (isRetryableError(status, error)) {
         const explicitDelayMs = getUpstreamRetryDelayMs(error);
         const upstreamResetTimestamp = getUpstreamResetTimestamp(error);
+        const errorType = status === 503 ? '503 (容量不足)' : '429';
 
-        // 检查是否是长时间冷却（额度耗尽）
-        if (explicitDelayMs !== null && explicitDelayMs >= cooldownThreshold && tokenId && modelId) {
+        // 检查是否是长时间冷却（额度耗尽）- 仅 429 触发模型系列禁用
+        if (status === 429 && explicitDelayMs !== null && explicitDelayMs >= cooldownThreshold && tokenId && modelId) {
           // 恢复时间超过阈值，触发模型系列禁用
           let finalResetTimestamp = upstreamResetTimestamp;
 
@@ -346,10 +376,10 @@ export async function with429Retry(fn, maxRetries, options = {}, legacyOnAttempt
           }
 
           if (finalResetTimestamp && finalResetTimestamp > Date.now()) {
-            const groupKey = tokenCooldownManager.getGroupKey(modelId);
+            const groupKey = getGroupKey(modelId);
             const resetDate = new Date(finalResetTimestamp);
-            logger.warn(
-              `${loggerPrefix}收到 429，恢复时间 ${Math.round(explicitDelayMs / 1000 / 60)} 分钟后，` +
+          logger.warn(
+            `${loggerPrefix}收到 ${errorType}，恢复时间 ${Math.round(explicitDelayMs / 1000 / 60)} 分钟后，` +
               `超过阈值(${Math.round(cooldownThreshold / 1000 / 60)}分钟)，` +
               `禁用 ${groupKey} 系列直到 ${resetDate.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`
             );
@@ -364,7 +394,7 @@ export async function with429Retry(fn, maxRetries, options = {}, legacyOnAttempt
           const nextAttempt = attempt + 1;
           const waitMs = computeBackoffMs(nextAttempt, explicitDelayMs);
           logger.warn(
-            `${loggerPrefix}收到 429，等待 ${waitMs}ms 后进行第 ${nextAttempt} 次重试（共 ${retries} 次）` +
+            `${loggerPrefix}收到 ${errorType}，等待 ${waitMs}ms 后进行第 ${nextAttempt} 次重试（共 ${retries} 次）` +
             (explicitDelayMs !== null ? `（上游提示≈${explicitDelayMs}ms）` : '')
           );
           await sleep(waitMs);

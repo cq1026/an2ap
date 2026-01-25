@@ -264,9 +264,9 @@ curl http://localhost:8045/v1/chat/completions \
   }'
 ```
 
-### 429 自动重试配置
+### 429/503 自动重试配置
 
-所有 429 重试次数仅通过服务端配置控制：
+所有 429/503 重试次数仅通过服务端配置控制（503 仅重试 MODEL_CAPACITY_EXHAUSTED 容量不足错误）：
 
 - 全局默认重试次数（服务端配置）：
   - 文件：`config.json` 中的 `other.retryTimes`
@@ -279,7 +279,7 @@ curl http://localhost:8045/v1/chat/completions \
       "useNativeAxios": false
     }
     ```
-  - 服务器始终使用这里配置的值作为 429 时的重试次数（默认 3 次）。
+  - 服务器始终使用这里配置的值作为 429/503 时的重试次数（默认 3 次）。
 
 ### 思维链响应格式
 
