@@ -5,6 +5,7 @@ import { saveBase64Image } from '../utils/imageStorage.js';
 import logger from '../utils/logger.js';
 import memoryManager from '../utils/memoryManager.js';
 import { httpRequest, httpStreamRequest } from '../utils/httpClient.js';
+import { generateTrajectorybody } from '../utils/trajectory.js';
 import { MODEL_LIST_CACHE_TTL } from '../constants/index.js';
 import { createApiError } from '../utils/errors.js';
 import path from 'path';
@@ -218,6 +219,7 @@ export async function generateAssistantResponse(requestBody, token, callback) {
     if (dumpId) {
       await dumpStreamResponse(dumpId, streamCollector);
     }
+    sendRecordTrajectoryAnalytics(token).catch(err => logger.warn('发送轨迹分析失败:', err.message));
   } catch (error) {
     try { processor.close(); } catch { }
     await handleApiError(error, token, dumpId);
@@ -348,6 +350,7 @@ export async function generateAssistantResponseNoStream(requestBody, token) {
       dumpFinalRawResponse,
       rawFormat: 'json'
     });
+    sendRecordTrajectoryAnalytics(token).catch(err => logger.warn('发送轨迹分析失败:', err.message));
   } catch (error) {
     await handleApiError(error, token, dumpId);
   }
@@ -414,6 +417,7 @@ export async function generateImageForSD(requestBody, token) {
         headers,
         data: requestBody
       })).data;
+      sendRecordTrajectoryAnalytics(token).catch(err => logger.warn('发送轨迹分析失败:', err.message));
     } else {
       const response = await requester.antigravity_fetch(config.api.noStreamUrl, buildRequesterConfig(headers, requestBody));
       if (response.status !== 200) {
@@ -421,6 +425,7 @@ export async function generateImageForSD(requestBody, token) {
         throw { status: response.status, message: errorBody };
       }
       data = await response.json();
+      sendRecordTrajectoryAnalytics(token).catch(err => logger.warn('发送轨迹分析失败:', err.message));
     }
   } catch (error) {
     await handleApiError(error, token);
@@ -430,6 +435,30 @@ export async function generateImageForSD(requestBody, token) {
   const images = parts.filter(p => p.inlineData).map(p => p.inlineData.data);
 
   return images;
+}
+
+export async function sendRecordTrajectoryAnalytics(token){
+  const trajectorybody = generateTrajectorybody();
+  const headers = buildHeaders(token);
+  try {
+    if (useAxios) {
+      await httpRequest({
+        method: 'POST',
+        url: config.api.recordTrajectory,
+        headers,
+        data: trajectorybody
+      });
+    } else {
+      const response = await requester.antigravity_fetch(config.api.recordTrajectory, buildRequesterConfig(headers, trajectorybody));
+      if (response.status !== 200) {
+        const errorBody = await response.text();
+        throw new Error(`轨迹分析请求失败 (${response.status}): ${errorBody}`);
+      }
+    }
+    logger.info('轨迹分析发送成功');
+  } catch (error) {
+    throw error;
+  }
 }
 
 export function closeRequester() {
